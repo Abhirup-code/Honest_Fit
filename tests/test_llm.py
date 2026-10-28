@@ -50,19 +50,20 @@ def test_long_text_is_trimmed_before_it_reaches_the_model():
 
 
 @pytest.mark.parametrize(
-    ("answers", "fail", "message"),
+    ("answers", "fail", "code"),
     [
-        (["not json"], None, "expected format"),
-        ([{"tips": [{"original": "", "suggestion": "b"}]}], None, "expected format"),
-        ([{"tips": [{"original": "a", "suggestion": "b"}] * 20}], None, "expected format"),
-        ([], "500", "Could not reach"),
-        ([], "timeout", "too long"),
+        (["not json"], None, "bad_answer"),
+        ([{"tips": [{"original": "", "suggestion": "b"}]}], None, "bad_answer"),
+        ([{"tips": [{"original": "a", "suggestion": "b"}] * 20}], None, "bad_answer"),
+        ([], "500", "unreachable"),
+        ([], "timeout", "timeout"),
     ],
 )
-def test_bad_or_failed_answers_become_a_friendly_error(answers, fail, message):
+def test_bad_or_failed_answers_become_an_error_code(answers, fail, code):
     transport, _ = ollama_transport(answers, fail=fail)
-    with pytest.raises(AIError, match=message):
+    with pytest.raises(AIError) as raised:
         provider(transport).rewrite_tips("job", "resume", ["Python"])
+    assert raised.value.code == code
 
 
 def test_reads_url_and_model_from_the_environment(monkeypatch):

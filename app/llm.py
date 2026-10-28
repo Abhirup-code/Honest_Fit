@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
@@ -20,7 +20,15 @@ MAX_PROMPT_TEXT = 8_000
 
 
 class AIError(Exception):
-    """The model was unreachable, too slow, or returned something unusable."""
+    """The model was unreachable, too slow, or returned something unusable.
+
+    Carries only a short code. The words shown to people come from a fixed list in service.py,
+    so no exception text ever reaches a page or API response.
+    """
+
+    def __init__(self, code: Literal["timeout", "unreachable", "bad_answer"]):
+        super().__init__(code)
+        self.code = code
 
 
 class ExtraRequirement(BaseModel):
@@ -102,11 +110,11 @@ class OllamaProvider:
             content = response.json()["message"]["content"]
             return schema.model_validate(json.loads(content))
         except httpx.TimeoutException as e:
-            raise AIError("The local model took too long to answer.") from e
+            raise AIError("timeout") from e
         except httpx.HTTPError as e:
-            raise AIError("Could not reach Ollama.") from e
+            raise AIError("unreachable") from e
         except (KeyError, TypeError, ValueError, ValidationError) as e:
-            raise AIError("The model's answer was not in the expected format.") from e
+            raise AIError("bad_answer") from e
 
     def extra_requirements(self, job: str, known: list[str]) -> ExtraRequirements:
         prompt = (

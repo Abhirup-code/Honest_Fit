@@ -10,6 +10,14 @@ from .llm import AIError, AIProvider, AIStatus, Tip
 from .matcher import Analysis, analyze
 from .skills import find_skills, term_in_text
 
+# What people see when the model fails. Fixed text only: exception messages are never shown.
+AI_ERROR_MESSAGES = {
+    "timeout": "The local model took too long to answer.",
+    "unreachable": "Could not reach Ollama.",
+    "bad_answer": "The model's answer was not in the expected format.",
+}
+STILL_COMPLETE = "The keyword analysis above is still complete."
+
 _SAFE_TERM = re.compile(r"^[\w .+#/&()'-]{1,60}$")
 
 
@@ -62,5 +70,5 @@ def run(job: str, resume: str, provider: AIProvider | None) -> Report:
             tips = provider.rewrite_tips(job, resume, matched).tips
             report.tips, report.blocked = screen(tips, resume)
     except AIError as e:
-        report.ai_error = f"{e} The keyword analysis above is still complete."
+        report.ai_error = f"{AI_ERROR_MESSAGES.get(e.code, 'The local model failed.')} {STILL_COMPLETE}"
     return report

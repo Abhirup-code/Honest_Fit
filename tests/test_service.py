@@ -1,4 +1,4 @@
-from app.service import run
+from app.service import AI_ERROR_MESSAGES, run
 from tests.fakes import FakeProvider
 
 JOB = """Requirements
@@ -56,7 +56,13 @@ def test_tips_go_through_the_honesty_guard():
 
 
 def test_a_failing_model_does_not_break_the_report():
-    report = run(JOB, RESUME, FakeProvider(error="Could not reach Ollama."))
-    assert report.ai_error.startswith("Could not reach Ollama.")
-    assert "still complete" in report.ai_error
+    report = run(JOB, RESUME, FakeProvider(error="unreachable"))
+    assert report.ai_error == "Could not reach Ollama. The keyword analysis above is still complete."
     assert report.analysis.matched
+
+
+def test_errors_only_ever_show_fixed_text():
+    for code, message in AI_ERROR_MESSAGES.items():
+        assert run(JOB, RESUME, FakeProvider(error=code)).ai_error.startswith(message)
+    # An unexpected code still gets fixed text, never the code or any exception message.
+    assert run(JOB, RESUME, FakeProvider(error="secret detail")).ai_error.startswith("The local model failed.")

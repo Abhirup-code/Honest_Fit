@@ -36,6 +36,7 @@ def ollama_transport(answers: list[dict] | None = None, models=("llama3.2:3b",),
 
 class FakeProvider:
     def __init__(self, extras=None, tips=None, available=True, error: str | None = None):
+        # error is an AIError code: "timeout", "unreachable", or "bad_answer"
         self.extras = extras or []
         self.tips = tips or []
         self.available = available
