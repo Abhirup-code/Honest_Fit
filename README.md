@@ -6,7 +6,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abhirup-code/Honest_Fit/badge)](https://scorecard.dev/viewer/?uri=github.com/Abhirup-code/Honest_Fit)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-Paste a job post and your resume to see which requirements you meet, what is missing, and **honest** ways to word
+Paste a job post and your resume (or upload it as a PDF or Word file) to see which requirements you meet, what is missing, and **honest** ways to word
 what you already have. It runs entirely on your computer with a free local model from [Ollama](https://ollama.com),
 so your resume never leaves your machine and there is no API key or cost.
 
@@ -28,7 +28,8 @@ skill you do not have, invent a number, or quote a line that is not in your resu
 | **Smart reading** | About 170 skills with the ways people write them (k8s, Postgres, C#, CI/CD). Reads "Requirements" and "Nice to have" sections, and "is a plus" or "familiarity with" sentence by sentence. Words like Go, R, React, and Excel only count in context, so "react quickly" or "excel at teamwork" are not skills. |
 | **Local AI (optional)** | With Ollama running, the model finds requirements the catalogue missed (for example PagerDuty) and suggests rewording for your existing lines. Without Ollama, everything else still works. |
 | **Honesty guard** | Every AI tip must quote a real line from your resume, may not add a skill your resume does not show, and may not add a number that was not in the original line. Blocked tips are listed with the reason. |
-| **JSON API** | `POST /api/analyze` returns the same report as JSON; interactive docs at `/api/docs`. |
+| **Upload your resume** | Upload a PDF, Word .docx, or text file instead of pasting. The extracted text fills the resume box so you can check it first. Scanned PDFs with no text get a clear message. |
+| **JSON API** | `POST /api/analyze` returns the same report as JSON, and `POST /api/resume-text` turns an uploaded file into text; interactive docs at `/api/docs`. |
 
 ## The honesty guard
 
@@ -113,20 +114,22 @@ flowchart LR
 
 | | |
 |---|---|
-| Tests | 66 pytest tests with 100% line and branch coverage; CI fails under 95% |
+| Tests | 99 pytest tests with about 99% line and branch coverage, using real PDF and Word files and hostile ones (zip bombs, entity-expansion XML, password-protected and oversized PDFs); CI fails under 95% |
 | Fuzzing | Hypothesis property tests: random job posts, resumes, and model output must never crash the analysis, push a score outside 0 to 100, mark a skill as both matched and missing, or get a skill-adding tip past the guard |
-| Coverage-guided fuzzing | [Atheris](https://github.com/google/atheris) runs for 5 minutes in CI, mutating job posts, resumes, and model answers to reach new code paths, and fails on any crash, a score outside 0 to 100, or the guard letting through a new skill or number. A local two-minute run made about 73,000 attempts with no failures. |
+| Coverage-guided fuzzing | [Atheris](https://github.com/google/atheris) runs in CI against two targets: the analysis and honesty guard (any crash, a score outside 0 to 100, or a new skill or number getting through fails the build), and the PDF and Word readers (anything other than text or a friendly error fails). The upload fuzzer found a real bug within two minutes, a malformed PDF filter that raised an unhandled error, which is now fixed and kept as a regression test. |
 | AI without a model | Tests run against a fake Ollama server, including malformed answers, timeouts, oversized output, and a prompt-injection attempt |
 | Accessibility | axe-core finds no WCAG 2.1 AA violations on the form or results, in light and dark mode, on desktop and phone |
 | Static analysis | ruff (including flake8-bandit security rules), bandit, and CodeQL for Python, JavaScript, and the workflows |
 | Supply chain | Every dependency pinned with SHA-256 hashes; only versions at least two weeks old, except documented security fixes; pip-audit, Dependabot with the same cooldown, every Action pinned to a commit, zizmor workflow lint, dependency review |
 | Secrets | gitleaks scans the full git history on every push |
 | Container | Non-root (UID 10001), read-only filesystem, all capabilities dropped, no pip in the image; Trivy fails the build on fixable critical or high vulnerabilities; CI smoke-tests the running container |
+| Uploads | Type checked by contents, not file name; 2 MB and 10-page limits; zip-bomb checks and defusedxml for Word files; parsing in a separate process with a 10-second time limit and a memory cap; never stored |
 | Web | Content-Security-Policy with no inline or third-party scripts, no framing, `no-store` caching, escaped output, input limits |
 
-While setting this up, pip-audit caught two real advisories in freshly locked dependencies: a compromised root
-certificate in certifi (PYSEC-2026-4320) and lock-file attacks in filelock. Both were raised to fixed versions ahead
-of the two-week cooldown, with the reason recorded next to the pin.
+While building this, pip-audit caught real advisories in freshly locked dependencies: a compromised root certificate
+in certifi (PYSEC-2026-4320), lock-file attacks in filelock, and six denial-of-service bugs in pypdf, where a
+crafted PDF uses huge memory or time. Each was raised to a fixed version ahead of the two-week cooldown, with the
+reason recorded next to the pin.
 
 ## Limitations
 
@@ -145,11 +148,12 @@ app/
   llm.py         Ollama client with JSON-schema answers
   guard.py       the honesty guard
   service.py     one analysis: keyword report plus AI extras
+  extract.py     safe text extraction from uploaded PDF, Word, and text files
   main.py        FastAPI web page, JSON API, security headers
   templates/     page template
   static/        CSS and a small script
 tests/           pytest, Hypothesis property tests, fake Ollama
-fuzz/            Atheris coverage-guided fuzz test
+fuzz/            Atheris fuzz targets and a seed corpus
 ```
 
 ## License
