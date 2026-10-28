@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+tests
+docs
+*.md
+__pycache__
+.pytest_cache
+.ruff_cache
+.hypothesis
+.coverage
+LICENSE
+NOTICE

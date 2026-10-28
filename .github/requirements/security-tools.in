@@ -1,0 +1,10 @@
+# Security tools used in CI. Regenerate after editing:
+#   uv pip compile .github/requirements/security-tools.in --universal --python-version 3.14 \
+#     --generate-hashes --exclude-newer <two weeks ago> -o .github/requirements/security-tools.txt
+pip-audit
+zizmor
+
+# Security floor (PYSEC-2026-4320); see requirements.in.
+certifi>=2026.10.19
+# Security floor (CVE-2026-112906 and related local lock-file attacks), allowed past the cooldown.
+filelock>=4.2.1

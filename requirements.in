@@ -3,3 +3,6 @@ uvicorn
 jinja2
 httpx
 python-multipart
+# Security floor, allowed past the two-week cooldown: PYSEC-2026-4320 (a root certificate whose
+# intermediate CAs had compromised keys). The advisory says to use 2026.10.19 or later.
+certifi>=2026.10.19
