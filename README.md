@@ -113,8 +113,9 @@ flowchart LR
 
 | | |
 |---|---|
-| Tests | 65 pytest tests with 100% line and branch coverage; CI fails under 95% |
+| Tests | 66 pytest tests with 100% line and branch coverage; CI fails under 95% |
 | Fuzzing | Hypothesis property tests: random job posts, resumes, and model output must never crash the analysis, push a score outside 0 to 100, mark a skill as both matched and missing, or get a skill-adding tip past the guard |
+| Coverage-guided fuzzing | [Atheris](https://github.com/google/atheris) runs for 5 minutes in CI, mutating job posts, resumes, and model answers to reach new code paths, and fails on any crash, a score outside 0 to 100, or the guard letting through a new skill or number. A local two-minute run made about 73,000 attempts with no failures. |
 | AI without a model | Tests run against a fake Ollama server, including malformed answers, timeouts, oversized output, and a prompt-injection attempt |
 | Accessibility | axe-core finds no WCAG 2.1 AA violations on the form or results, in light and dark mode, on desktop and phone |
 | Static analysis | ruff (including flake8-bandit security rules), bandit, and CodeQL for Python, JavaScript, and the workflows |
@@ -148,6 +149,7 @@ app/
   templates/     page template
   static/        CSS and a small script
 tests/           pytest, Hypothesis property tests, fake Ollama
+fuzz/            Atheris coverage-guided fuzz test
 ```
 
 ## License

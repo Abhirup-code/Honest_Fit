@@ -47,6 +47,7 @@ jobs:
       - name: Audit app, dev, and CI tool dependencies
         run: |
           pip-audit -r requirements-dev.txt --strict
+          pip-audit -r requirements-fuzz.txt --strict
           pip-audit -r .github/requirements/security-tools.txt --strict
 
   dependency-review:

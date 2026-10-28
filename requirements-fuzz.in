@@ -1,0 +1,5 @@
+# Fuzzing tooling for CI. Regenerate requirements-fuzz.txt after editing:
+#   uv pip compile requirements-fuzz.in --universal --python-version 3.14 --generate-hashes \
+#     --exclude-newer <two weeks ago> --exclude-newer-package certifi=2026-10-20 -o requirements-fuzz.txt
+-r requirements.in
+atheris
