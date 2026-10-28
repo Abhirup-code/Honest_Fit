@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if report %}{{ fit_label(report.analysis.score) }} · {% endif %}Job Fit Analyzer</title>
+  <meta name="description" content="Compare a job post with your resume on your own computer. Honest AI suggestions, never invented ones.">
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+  <script src="{{ url_for('static', path='app.js') }}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <p class="brand">Job Fit Analyzer</p>
+  <p class="muted small">Runs on your computer. Nothing you paste leaves it.</p>
+</header>
+<main id="main">
+  <h1>How well does your resume fit this job?</h1>
+  <p class="lede">Paste a job post and your resume to see which requirements you meet, what is missing, and honest ways to word what you already have.</p>
+
+  <form method="post" action="/analyze" class="inputs" id="analyze-form">
+    <div class="field">
+      <label for="job">Job post</label>
+      <textarea id="job" name="job" rows="14" maxlength="{{ max_text }}" required placeholder="Paste the full job description, including the requirements.">{{ job }}</textarea>
+    </div>
+    <div class="field">
+      <label for="resume">Your resume</label>
+      <textarea id="resume" name="resume" rows="14" maxlength="{{ max_text }}" required placeholder="Paste your resume as plain text.">{{ resume }}</textarea>
+    </div>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    <div class="actions">
+      <button type="submit" class="primary" id="analyze-button">Analyze fit</button>
+      <a href="/?example=true">Try an example</a>
+    </div>
+    <p class="muted small" id="analyze-status" role="status"></p>
+  </form>
+
+  {% if report %}
+  {% set a = report.analysis %}
+  <section aria-labelledby="result-heading" class="result">
+    <h2 id="result-heading">Result</h2>
+    <div class="score">
+      <p class="score-number">{% if a.score is not none %}{{ a.score }}<span>%</span>{% else %}–{% endif %}</p>
+      <div>
+        <p class="score-label">{{ fit_label(a.score) }}</p>
+        <p class="muted small">Required skills count twice as much as nice-to-haves.</p>
+      </div>
+    </div>
+    {% for note in a.notes %}<p class="note">{{ note }}</p>{% endfor %}
+
+    <div class="columns">
+      <section aria-labelledby="have-heading">
+        <h3 id="have-heading">You have ({{ a.matched | length }})</h3>
+        {% if a.matched %}
+        <ul class="skills">
+          {% for m in a.matched %}
+          <li>
+            <strong>{{ m.skill }}</strong> <span class="tag">{{ "required" if m.required else "nice to have" }}</span>
+            {% if m.evidence %}<p class="evidence">“{{ m.evidence }}”</p>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="muted">None of the recognised requirements yet.</p>{% endif %}
+      </section>
+
+      <section aria-labelledby="gap-heading">
+        <h3 id="gap-heading">Missing ({{ a.missing | length }})</h3>
+        {% if a.missing %}
+        <ul class="skills">
+          {% for m in a.missing %}
+          <li>
+            <strong>{{ m.skill }}</strong> <span class="tag {{ 'tag-required' if m.required }}">{{ "required" if m.required else "nice to have" }}</span>
+            {% if m.related %}<p class="related">Related experience you can mention: {{ m.related | join(", ") }}. Do not list {{ m.skill }} itself unless you have used it.</p>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="muted">Nothing missing from the recognised requirements.</p>{% endif %}
+      </section>
+    </div>
+
+    <section aria-labelledby="ai-heading" class="ai">
+      <h3 id="ai-heading">AI suggestions</h3>
+      <p class="muted">{{ report.ai.message }}</p>
+      {% if report.ai_error %}<p class="note">{{ report.ai_error }}</p>{% endif %}
+
+      {% if report.extras %}
+      <h4>Other things the post asks for</h4>
+      <ul class="skills">
+        {% for e in report.extras %}
+        <li><strong>{{ e.skill }}</strong> <span class="tag">{{ "required" if e.required else "nice to have" }}</span>
+          {{ "· in your resume" if e.found_in_resume else "· not in your resume" }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if report.tips %}
+      <h4>Honest wording tips</h4>
+      <p class="muted small">Each tip only rewords a line you already have. Use it only if it is true.</p>
+      <ol class="tips">
+        {% for t in report.tips %}
+        <li>
+          <p class="before"><span class="label">Your line</span>{{ t.original }}</p>
+          <p class="after"><span class="label">Suggested</span>{{ t.suggestion }}</p>
+          {% if t.reason %}<p class="muted small">{{ t.reason }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+
+      {% if report.blocked %}
+      <details class="blocked">
+        <summary>Blocked by the honesty guard ({{ report.blocked | length }})</summary>
+        <ul>
+          {% for b in report.blocked %}<li>“{{ b.tip.suggestion }}” <span class="muted">({{ b.reason }})</span></li>{% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    </section>
+  </section>
+  {% endif %}
+</main>
+<footer class="foot muted small">
+  Built by Abhirup Khan with FastAPI and a local model from Ollama. <a href="https://github.com/Abhirup-code/Job_Fit_Analyzer">Source</a>
+</footer>
+</body>
+</html>
