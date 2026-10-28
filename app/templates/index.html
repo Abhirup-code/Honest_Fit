@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if report %}{{ fit_label(report.analysis.score) }} · {% endif %}Job Fit Analyzer</title>
+  <title>{% if report %}{{ fit_label(report.analysis.score) }} · {% endif %}Honest Fit</title>
   <meta name="description" content="Compare a job post with your resume on your own computer. Honest AI suggestions, never invented ones.">
   <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
   <script src="{{ url_for('static', path='app.js') }}" defer></script>
@@ -11,7 +11,7 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
-  <p class="brand">Job Fit Analyzer</p>
+  <p class="brand">Honest Fit</p>
   <p class="muted small">Runs on your computer. Nothing you paste leaves it.</p>
 </header>
 <main id="main">
@@ -120,7 +120,7 @@
   {% endif %}
 </main>
 <footer class="foot muted small">
-  Built by Abhirup Khan with FastAPI and a local model from Ollama. <a href="https://github.com/Abhirup-code/Job_Fit_Analyzer">Source</a>
+  Built by Abhirup Khan with FastAPI and a local model from Ollama. <a href="https://github.com/Abhirup-code/Honest_Fit">Source</a>
 </footer>
 </body>
 </html>

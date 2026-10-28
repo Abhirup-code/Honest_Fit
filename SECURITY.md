@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please report security issues privately through GitHub's
-[private vulnerability reporting](https://github.com/Abhirup-code/Job_Fit_Analyzer/security/advisories/new),
+[private vulnerability reporting](https://github.com/Abhirup-code/Honest_Fit/security/advisories/new),
 not a public issue. I aim to reply within a week.
 
 ## Supported versions

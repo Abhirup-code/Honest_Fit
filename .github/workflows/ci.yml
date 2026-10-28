@@ -45,10 +45,10 @@ jobs:
           persist-credentials: false
       - name: Build and smoke test (AI off; no model in CI)
         run: |
-          docker build -t job-fit-analyzer:test .
+          docker build -t honest-fit:test .
           docker run -d --name app -p 8000:8000 --read-only --tmpfs /tmp \
             --cap-drop ALL --security-opt no-new-privileges:true \
-            -e AI_ENABLED=false job-fit-analyzer:test
+            -e AI_ENABLED=false honest-fit:test
           for _ in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
           curl -sf http://localhost:8000/health
           score=$(curl -sf -X POST http://localhost:8000/api/analyze -H 'Content-Type: application/json' \
@@ -61,7 +61,7 @@ jobs:
       - name: Scan Dockerfile and image (fail on fixable CRITICAL or HIGH)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: job-fit-analyzer:test
+          image-ref: honest-fit:test
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"

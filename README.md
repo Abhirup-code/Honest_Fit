@@ -1,9 +1,9 @@
-# Job Fit Analyzer
+# Honest Fit
 
-[![CI](https://github.com/Abhirup-code/Job_Fit_Analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/Abhirup-code/Job_Fit_Analyzer/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/Abhirup-code/Job_Fit_Analyzer/actions/workflows/codeql.yml/badge.svg)](https://github.com/Abhirup-code/Job_Fit_Analyzer/actions/workflows/codeql.yml)
-[![Security](https://github.com/Abhirup-code/Job_Fit_Analyzer/actions/workflows/security.yml/badge.svg)](https://github.com/Abhirup-code/Job_Fit_Analyzer/actions/workflows/security.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abhirup-code/Job_Fit_Analyzer/badge)](https://scorecard.dev/viewer/?uri=github.com/Abhirup-code/Job_Fit_Analyzer)
+[![CI](https://github.com/Abhirup-code/Honest_Fit/actions/workflows/ci.yml/badge.svg)](https://github.com/Abhirup-code/Honest_Fit/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Abhirup-code/Honest_Fit/actions/workflows/codeql.yml/badge.svg)](https://github.com/Abhirup-code/Honest_Fit/actions/workflows/codeql.yml)
+[![Security](https://github.com/Abhirup-code/Honest_Fit/actions/workflows/security.yml/badge.svg)](https://github.com/Abhirup-code/Honest_Fit/actions/workflows/security.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abhirup-code/Honest_Fit/badge)](https://scorecard.dev/viewer/?uri=github.com/Abhirup-code/Honest_Fit)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Paste a job post and your resume to see which requirements you meet, what is missing, and **honest** ways to word
@@ -58,8 +58,8 @@ You need [Homebrew](https://brew.sh).
 brew install ollama uv
 ollama serve &                 # or open the Ollama app
 ollama pull llama3.2:3b        # about 2 GB, one time
-git clone https://github.com/Abhirup-code/Job_Fit_Analyzer.git
-cd Job_Fit_Analyzer
+git clone https://github.com/Abhirup-code/Honest_Fit.git
+cd Honest_Fit
 uv venv --python 3.14
 uv pip install --require-hashes -r requirements.txt
 .venv/bin/uvicorn app.main:app

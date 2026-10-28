@@ -1,5 +1,5 @@
 [project]
-name = "job-fit-analyzer"
+name = "honest-fit"
 version = "0.1.0"
 description = "Compare a job post with your resume locally, with an honesty guard on AI suggestions."
 requires-python = ">=3.14"

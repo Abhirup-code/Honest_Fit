@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Job Fit Analyzer are listed here. The format follows
+All notable changes to Honest Fit are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
@@ -19,4 +19,4 @@ All notable changes to Job Fit Analyzer are listed here. The format follows
 - certifi raised to 2026.10.19 (PYSEC-2026-4320) and filelock to 4.2.1 or later in CI tools, ahead of the
   two-week dependency cooldown.
 
-[0.1.0]: https://github.com/Abhirup-code/Job_Fit_Analyzer/releases/tag/v0.1.0
+[0.1.0]: https://github.com/Abhirup-code/Honest_Fit/releases/tag/v0.1.0

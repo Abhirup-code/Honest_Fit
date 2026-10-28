@@ -74,7 +74,7 @@ def create_app(provider_factory: Callable[[], AIProvider | None] | None = None) 
         ai_on = os.environ.get("AI_ENABLED", "true").lower() not in {"0", "false", "no"}
         provider_factory = OllamaProvider.from_env if ai_on else (lambda: None)
 
-    app = FastAPI(title="Job Fit Analyzer", docs_url="/api/docs", redoc_url=None)
+    app = FastAPI(title="Honest Fit", docs_url="/api/docs", redoc_url=None)
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.globals["fit_label"] = fit_label
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
