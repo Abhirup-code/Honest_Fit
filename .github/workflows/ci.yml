@@ -51,10 +51,10 @@ jobs:
             -e AI_ENABLED=false honest-fit:test
           for _ in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
           curl -sf http://localhost:8000/health
-          score=$(curl -sf -X POST http://localhost:8000/api/analyze -H 'Content-Type: application/json' \
-            -d '{"job":"Requirements: Python and Docker","resume":"Skills: Python"}' \
-            | python3 -c 'import sys,json; print(json.load(sys.stdin)["score"])')
-          test "$score" = "50"
+          # Save the response and read it with jq (never pipe downloaded content into an interpreter).
+          curl -sf -X POST http://localhost:8000/api/analyze -H 'Content-Type: application/json' \
+            -d '{"job":"Requirements: Python and Docker","resume":"Skills: Python"}' -o result.json
+          test "$(jq -r .score result.json)" = "50"
           curl -sfI http://localhost:8000/ | grep -qi "content-security-policy: default-src 'self'"
           test "$(docker exec app id -u)" = "10001"
           docker rm -f app
