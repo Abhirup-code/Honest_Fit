@@ -1,0 +1,32 @@
+[project]
+name = "job-fit-analyzer"
+version = "0.1.0"
+description = "Compare a job post with your resume locally, with an honesty guard on AI suggestions."
+requires-python = ">=3.14"
+license = "Apache-2.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    # Starlette's TestClient suggests a newer HTTP client; the app itself uses httpx for Ollama.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S", "UP"]   # S = flake8-bandit security rules
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]                       # assert is fine in tests
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
