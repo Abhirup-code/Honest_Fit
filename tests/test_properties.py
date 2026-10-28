@@ -58,3 +58,16 @@ def test_ai_extras_are_only_safe_terms_the_post_mentions(extras, job, resume):
     for e in report.extras:
         assert e.skill.lower() in job.lower()
         assert "<" not in e.skill and ">" not in e.skill
+
+
+@settings(max_examples=300, deadline=None)
+@given(st.binary(max_size=4000), st.sampled_from([b"", b"%PDF-1.7\n", b"PK\x03\x04"]))
+def test_any_uploaded_bytes_give_text_or_a_friendly_error(data, prefix):
+    from app.extract import ExtractionError, extract_resume
+
+    try:
+        text = extract_resume(prefix + data, isolate=False)
+    except ExtractionError as e:
+        assert str(e)
+    else:
+        assert text.strip()

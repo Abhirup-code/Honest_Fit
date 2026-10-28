@@ -6,3 +6,10 @@ python-multipart
 # Security floor, allowed past the two-week cooldown: PYSEC-2026-4320 (a root certificate whose
 # intermediate CAs had compromised keys). The advisory says to use 2026.10.19 or later.
 certifi>=2026.10.19
+
+# Reads uploaded PDF resumes (pure Python, no dependencies). Security floor, allowed past the
+# two-week cooldown: 6.21.2 fixes six denial-of-service advisories (CVE-2026-113786, -113789,
+# -113790, -113791, -115572, -115580, -115585) where a crafted PDF uses huge memory or time.
+pypdf>=6.21.2
+# Hardened XML parsing for Word .docx uploads (refuses DTDs and entity-expansion attacks).
+defusedxml

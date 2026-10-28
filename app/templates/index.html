@@ -18,16 +18,20 @@
   <h1>How well does your resume fit this job?</h1>
   <p class="lede">Paste a job post and your resume to see which requirements you meet, what is missing, and honest ways to word what you already have.</p>
 
-  <form method="post" action="/analyze" class="inputs" id="analyze-form">
+  <form method="post" action="/analyze" class="inputs" id="analyze-form" enctype="multipart/form-data">
     <div class="field">
       <label for="job">Job post</label>
       <textarea id="job" name="job" rows="14" maxlength="{{ max_text }}" required placeholder="Paste the full job description, including the requirements.">{{ job }}</textarea>
     </div>
     <div class="field">
       <label for="resume">Your resume</label>
-      <textarea id="resume" name="resume" rows="14" maxlength="{{ max_text }}" required placeholder="Paste your resume as plain text.">{{ resume }}</textarea>
+      <textarea id="resume" name="resume" rows="14" maxlength="{{ max_text }}" placeholder="Paste your resume, or upload it below.">{{ resume }}</textarea>
+      <label for="resume_file" class="upload-label">Or upload your resume</label>
+      <input id="resume_file" name="resume_file" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" aria-describedby="upload-help">
+      <p id="upload-help" class="muted small">PDF, Word (.docx), or text, up to 2 MB. Read on this computer and never stored.</p>
     </div>
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
     <div class="actions">
       <button type="submit" class="primary" id="analyze-button">Analyze fit</button>
       <a href="/?example=true">Try an example</a>

@@ -7,13 +7,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from . import examples
+from .extract import MAX_UPLOAD_BYTES, ExtractionError, extract_resume
 from .llm import AIProvider, OllamaProvider
 from .matcher import MAX_TEXT
 from .service import Report, run
@@ -86,8 +87,22 @@ def create_app(provider_factory: Callable[[], AIProvider | None] | None = None) 
             response.headers.setdefault(name, value)
         return response
 
-    def page(request: Request, job: str = "", resume: str = "", report: Report | None = None, error: str = ""):
-        context = {"job": job, "resume": resume, "report": report, "error": error, "max_text": MAX_TEXT}
+    def page(
+        request: Request,
+        job: str = "",
+        resume: str = "",
+        report: Report | None = None,
+        error: str = "",
+        notice: str = "",
+    ):
+        context = {
+            "job": job,
+            "resume": resume,
+            "report": report,
+            "error": error,
+            "notice": notice,
+            "max_text": MAX_TEXT,
+        }
         status = 422 if error else 200
         return templates.TemplateResponse(request, "index.html", context, status_code=status)
 
@@ -97,15 +112,48 @@ def create_app(provider_factory: Callable[[], AIProvider | None] | None = None) 
             return page(request, examples.JOB, examples.RESUME)
         return page(request)
 
+    def read_upload(upload: UploadFile | None) -> tuple[str, str] | None:
+        """Text and file name from an uploaded resume, or None if no file was chosen."""
+        if upload is None or not upload.filename:
+            return None
+        data = upload.file.read(MAX_UPLOAD_BYTES + 1)  # never read more than the limit allows
+        name = Path(upload.filename).name[:80]
+        return extract_resume(data), name
+
     @app.post("/analyze", response_class=HTMLResponse)
-    def analyze_form(request: Request, job: Annotated[str, Form()] = "", resume: Annotated[str, Form()] = ""):
+    def analyze_form(
+        request: Request,
+        job: Annotated[str, Form()] = "",
+        resume: Annotated[str, Form()] = "",
+        resume_file: Annotated[UploadFile | None, File()] = None,
+    ):
+        notice = ""
+        try:
+            uploaded = read_upload(resume_file)
+        except ExtractionError as e:
+            return page(request, job[:MAX_TEXT], resume[:MAX_TEXT], error=str(e))
+        if uploaded:
+            resume, name = uploaded
+            notice = f"Read {len(resume):,} characters from {name}. Check the text in the resume box."
         if not job.strip() or not resume.strip():
-            return page(request, job, resume, error="Paste both the job post and your resume.")
+            return page(request, job, resume, error="Paste the job post and paste or upload your resume.")
         if len(job) > MAX_TEXT or len(resume) > MAX_TEXT:
             return page(
                 request, job[:MAX_TEXT], resume[:MAX_TEXT], error=f"Each box takes up to {MAX_TEXT:,} characters."
             )
-        return page(request, job, resume, run(job, resume, provider_factory()))
+        return page(request, job, resume, run(job, resume, provider_factory()), notice=notice)
+
+    @app.post("/api/resume-text")
+    def resume_text_api(file: Annotated[UploadFile, File()]) -> JSONResponse:
+        """Text from an uploaded resume (PDF, Word .docx, or text), for use with /api/analyze."""
+        try:
+            uploaded = read_upload(file)
+        except ExtractionError as e:
+            return JSONResponse({"detail": str(e)}, status_code=422)
+        if uploaded is None:
+            return JSONResponse({"detail": "Choose a file to upload."}, status_code=422)
+        text, name = uploaded
+        return JSONResponse({"file": name, "characters": len(text), "text": text})
 
     @app.post("/api/analyze")
     def analyze_api(body: AnalyzeRequest) -> JSONResponse:

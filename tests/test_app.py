@@ -54,8 +54,8 @@ def test_pasted_html_is_shown_as_text_not_run(client):
 @pytest.mark.parametrize(
     ("job", "resume", "message"),
     [
-        ("", "Python", "Paste both"),
-        ("Python", "   ", "Paste both"),
+        ("", "Python", "paste or upload your resume"),
+        ("Python", "   ", "paste or upload your resume"),
         ("x" * (MAX_TEXT + 1), "Python", "up to 20,000 characters"),
     ],
 )
