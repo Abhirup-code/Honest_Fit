@@ -58,6 +58,29 @@ def test_reads_real_pdf_and_word_files(name):
     assert "Containerized an internal Flask tool with Docker" in text
 
 
+def test_rejoins_a_bullet_that_wrapped_onto_two_lines_in_a_pdf():
+    text = read((FIXTURES / "wrapped.pdf").read_bytes())
+    assert (
+        "• Kept a payments service available for customers by validating data integrity with SQL on PostgreSQL "
+        "and MySQL across every weekly release and rollback drill.\n• Containerized"
+    ) in text
+    assert text.startswith("Alex Rivera\nEXPERIENCE\n")
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("validating data with SQL on PostgreSQL and \nMySQL.", "validating data with SQL on PostgreSQL and MySQL."),
+        ("first bullet ends here. \n• second bullet", "first bullet ends here. \n• second bullet"),
+        ("item one \n- item two", "item one \n- item two"),
+        ("SKILLS\nPython", "SKILLS\nPython"),
+        ("paragraph \n\nnext paragraph", "paragraph \n\nnext paragraph"),
+    ],
+)
+def test_unwrap_only_joins_lines_the_page_width_broke(raw, expected):
+    assert extract._unwrap(raw) == expected
+
+
 def test_reads_plain_text_and_tidies_it():
     assert read(b"Alex\r\n\r\n\r\n\r\nSkills:\t Python  \n") == "Alex\n\nSkills: Python"
 

@@ -85,7 +85,17 @@ def pdf_text(data: bytes) -> str:
         raise
     except (PdfReadError, ValueError, KeyError, TypeError, AttributeError, IndexError, RecursionError) as e:
         raise ExtractionError("That PDF could not be read. Try exporting it again, or paste the text.") from e
-    return "\n".join(parts)
+    return _unwrap("\n".join(parts))
+
+
+# A PDF has no paragraphs, only lines, so a long bullet comes back split over several lines. pypdf
+# leaves a space at the end of a line that wrapped, and none where a line really ends.
+_WRAPPED = re.compile(r"[ \t]+\n(?=[^\s•▪◦●·*-])")
+
+
+def _unwrap(text: str) -> str:
+    """Rejoin lines that only broke because the page ran out of width, so a bullet stays one line."""
+    return _WRAPPED.sub(" ", text)
 
 
 def docx_text(data: bytes) -> str:
