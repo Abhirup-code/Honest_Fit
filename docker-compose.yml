@@ -4,7 +4,7 @@
 # see the README.
 services:
   ollama:
-    image: ollama/ollama:0.40.4
+    image: ollama/ollama:0.40.12
     volumes:
       - ollama-models:/root/.ollama
     healthcheck:
@@ -13,7 +13,7 @@ services:
       retries: 30
 
   pull-model:
-    image: ollama/ollama:0.40.4
+    image: ollama/ollama:0.40.12
     environment:
       OLLAMA_HOST: ollama:11434
     entrypoint: ["ollama", "pull", "llama3.2:3b"]
