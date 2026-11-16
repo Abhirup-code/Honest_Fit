@@ -95,8 +95,17 @@ curl -s http://127.0.0.1:8000/api/analyze -H 'Content-Type: application/json' \
   -d '{"job": "Requirements: Python, Docker, Jenkins", "resume": "Skills: Python, GitHub Actions"}'
 ```
 
-Returns the score, label, matched skills with evidence, missing skills with related experience, and the AI section
-(status, extra requirements, kept tips, and blocked tips with reasons).
+Returns the score, label, matched skills with evidence, missing skills with related experience, the hard
+requirements and years lines that are deliberately kept out of the score, and the AI section (status, extra
+requirements, kept tips, and blocked tips with reasons).
+
+To screen a batch of saved posts, read `gates` before `score`:
+
+```bash
+curl -s http://127.0.0.1:8000/api/analyze -H 'Content-Type: application/json' \
+  -d "$(jq -n --rawfile job post.txt --rawfile resume resume.txt '{job: $job, resume: $resume}')" \
+  | jq '{score, gates: [.gates[].kind], years: [.years[].label]}'
+```
 
 ## How it works
 

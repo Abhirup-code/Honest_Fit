@@ -59,6 +59,13 @@ def report_json(report: Report) -> dict:
         "matched": [{"skill": m.skill, "required": m.required, "evidence": m.evidence} for m in a.matched],
         "missing": [{"skill": m.skill, "required": m.required, "related": m.related} for m in a.missing],
         "notes": a.notes,
+        # Neither of these counts toward the score, so a caller that only reads "score"
+        # would miss the two things most likely to decide the application.
+        "gates": [{"kind": g.kind, "sentence": g.sentence, "advice": g.advice} for g in a.gates],
+        "years": [
+            {"years": y.years, "skill": y.skill, "required": y.required, "label": y.label(), "sentence": y.sentence}
+            for y in a.years
+        ],
         "ai": {
             "available": report.ai.available,
             "message": report.ai.message,

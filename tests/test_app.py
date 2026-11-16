@@ -77,6 +77,34 @@ def test_json_api(client):
     assert body["ai"]["blocked"][0]["reason"].startswith("adds Jenkins, Kubernetes")
 
 
+def test_json_api_carries_what_the_score_leaves_out(client):
+    """A caller reading only the score would miss the two things that decide the application."""
+    job = "Requirements\n- 5+ years of Python\n- We cannot sponsor visas for this role.\n"
+    body = client.post("/api/analyze", json={"job": job, "resume": "Python every day."}).json()
+    assert body["gates"] == [
+        {
+            "kind": "Work authorization",
+            "sentence": "We cannot sponsor visas for this role.",
+            "advice": "Check this before applying: it rules out some work authorizations.",
+        }
+    ]
+    assert body["years"] == [
+        {
+            "years": 5,
+            "skill": "Python",
+            "required": True,
+            "label": "5+ years of Python",
+            "sentence": "5+ years of Python",
+        }
+    ]
+    assert body["score"] == 100  # neither one moves the score
+
+
+def test_a_post_with_no_gates_or_years_says_so_plainly(client):
+    body = client.post("/api/analyze", json={"job": "We use Python.", "resume": "Python."}).json()
+    assert body["gates"] == [] and body["years"] == []
+
+
 def test_json_api_validates_input(client):
     assert client.post("/api/analyze", json={"job": "", "resume": "x"}).status_code == 422
     assert client.post("/api/analyze", json={"job": "x" * (MAX_TEXT + 1), "resume": "x"}).status_code == 422
