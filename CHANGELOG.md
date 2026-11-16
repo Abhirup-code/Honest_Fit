@@ -4,6 +4,13 @@ All notable changes to Honest Fit are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+- pypdf raised to 6.21.4 and opentelemetry-api to 1.45.2 ahead of the two-week cooldown.
+  pypdf 6.21.3 and 6.21.4 fix seven denial-of-service advisories (CVE-2026-119203 to -119209) in which a
+  crafted PDF burns memory or time, which is exactly what an uploaded resume is.
+
 ## [0.2.0] - 2026-10-28
 
 ### Added

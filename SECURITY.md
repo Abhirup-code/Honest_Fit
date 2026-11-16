@@ -29,7 +29,8 @@ Only the latest version on `main` receives fixes.
 
 - Every Python dependency is pinned with SHA-256 hashes and installed with `--require-hashes`.
 - Only versions at least two weeks old are locked in, except security fixes, which are documented in
-  `requirements.in` (certifi for PYSEC-2026-4320, and pypdf 6.21.2 for six denial-of-service advisories). Dependabot uses the same two-week cooldown.
+  `requirements.in`: certifi for PYSEC-2026-4320, pypdf 6.21.4 for thirteen denial-of-service advisories,
+  and opentelemetry-api 1.45.2 for CVE-2026-126360. Dependabot uses the same two-week cooldown.
 - Every GitHub Action is pinned to a full commit hash, and workflows default to read-only permissions.
 - CI runs ruff (with security rules), bandit, CodeQL, gitleaks over the full history, pip-audit, Trivy on the
   container image, zizmor on the workflows, dependency review on pull requests, OpenSSF Scorecard, and

@@ -9,7 +9,12 @@ certifi>=2026.10.19
 
 # Reads uploaded PDF resumes (pure Python, no dependencies). Security floor, allowed past the
 # two-week cooldown: 6.21.2 fixes six denial-of-service advisories (CVE-2026-113786, -113789,
-# -113790, -113791, -115572, -115580, -115585) where a crafted PDF uses huge memory or time.
-pypdf>=6.21.2
+# -113790, -113791, -115572, -115580, -115585) where a crafted PDF uses huge memory or time,
+# and 6.21.4 fixes seven more of the same kind (CVE-2026-119203 to -119209). An uploaded resume
+# is exactly the untrusted PDF those advisories describe, so this stays current.
+pypdf>=6.21.4
+# Pulled in by fastapi. Security floor, allowed past the two-week cooldown: 1.45.2 fixes
+# CVE-2026-126360.
+opentelemetry-api>=1.45.2
 # Hardened XML parsing for Word .docx uploads (refuses DTDs and entity-expansion attacks).
 defusedxml
