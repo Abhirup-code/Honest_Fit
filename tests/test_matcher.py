@@ -136,3 +136,67 @@ def test_no_years_in_the_post_means_no_note():
     analysis = m.analyze("We use Python.", "Python every day.")
     assert analysis.years == []
     assert analysis.notes == []
+
+
+@pytest.mark.parametrize(
+    "sentence, kind",
+    [
+        ("We are unable to sponsor visas for this position.", "Work authorization"),
+        ("Must be a US citizen.", "Work authorization"),
+        ("US citizens only, no exceptions.", "Work authorization"),
+        ("No visa sponsorship is available.", "Work authorization"),
+        ("Active TS/SCI clearance required.", "Security clearance"),
+        ("You must hold a security clearance.", "Security clearance"),
+        ("Bachelor's degree required in Computer Science.", "Degree"),
+        ("Required: BS in engineering or equivalent.", "Degree"),
+        ("This role is 100% onsite in Austin.", "On site"),
+        ("You must be able to work onsite.", "On site"),
+        ("4 days per week in the office.", "On site"),
+        ("A valid driver's license is required.", "Driving"),
+    ],
+)
+def test_hard_requirements_are_recognised(sentence, kind):
+    found = m.read_gates(sentence)
+    assert [g.kind for g in found] == [kind]
+    assert found[0].sentence == sentence
+    assert found[0].advice
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "We sponsor visas and relocation.",
+        "A degree is nice to have.",
+        "This role is fully remote.",
+        "Clearance is not needed for this team.",
+        "You will drive our testing strategy.",
+    ],
+)
+def test_ordinary_lines_are_not_hard_requirements(sentence):
+    assert m.read_gates(sentence) == []
+
+
+def test_each_kind_is_reported_once_in_the_order_it_is_defined():
+    job = (
+        "Must be able to work onsite.\n"
+        "Bachelor's degree required.\n"
+        "We cannot sponsor visas.\n"
+        "No visa sponsorship is available for this role.\n"
+    )
+    found = m.read_gates(job)
+    assert [g.kind for g in found] == ["Work authorization", "Degree", "On site"]
+    # The first sentence that said it is the one quoted.
+    assert found[0].sentence == "We cannot sponsor visas."
+
+
+def test_hard_requirements_reach_the_report_without_touching_the_score():
+    job = "Requirements\n- Python\n- We cannot sponsor visas for this role.\n"
+    analysis = m.analyze(job, "Python every day.")
+    assert [g.kind for g in analysis.gates] == ["Work authorization"]
+    assert analysis.score == 100
+    assert any("no rewording can satisfy" in note for note in analysis.notes)
+
+
+def test_a_long_sentence_is_shortened_for_the_page():
+    job = "We cannot sponsor visas " + "x" * 300 + "."
+    assert len(m.read_gates(job)[0].sentence) == 180

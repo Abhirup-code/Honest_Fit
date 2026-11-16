@@ -52,6 +52,22 @@
     </div>
     {% for note in a.notes %}<p class="note">{{ note }}</p>{% endfor %}
 
+    {% if a.gates %}
+    <section aria-labelledby="gates-heading" class="years">
+      <h3 id="gates-heading">Hard requirements ({{ a.gates | length }})</h3>
+      <p class="muted small">Not part of the score. No wording change gets you past these, so read them before you spend an hour on the application.</p>
+      <ul class="skills">
+        {% for g in a.gates %}
+        <li>
+          <strong>{{ g.kind }}</strong>
+          <p class="evidence">“{{ g.sentence }}”</p>
+          <p class="muted small">{{ g.advice }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
     {% if a.years %}
     <section aria-labelledby="years-heading" class="years">
       <h3 id="years-heading">Years of experience asked for ({{ a.years | length }})</h3>

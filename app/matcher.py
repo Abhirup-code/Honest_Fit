@@ -52,6 +52,53 @@ _WORD_NUMBERS = {
 }
 
 
+# Requirements no rewording of a resume can satisfy. Finding these early saves an application:
+# they are the reason a strong match still gets rejected.
+GATES: tuple[tuple[str, str, str], ...] = (
+    (
+        "Work authorization",
+        r"\b(?:must be (?:a )?(?:US|U\.S\.) (?:citizen|person)|US citizenship required|"
+        r"citizens? only|no (?:visa )?sponsorship|not (?:able|willing) to sponsor|"
+        r"(?:do(?:es)? not|cannot|can't|unable to) (?:provide |offer )?sponsor|"
+        r"without (?:current or future )?sponsorship|green card holders?)\b",
+        "Check this before applying: it rules out some work authorizations.",
+    ),
+    (
+        "Security clearance",
+        r"\b(?:security clearance|(?:active|current)\s+(?:TS/SCI|Secret|Top Secret)|"
+        r"TS/SCI|public trust clearance|ability to obtain a clearance)\b",
+        "A clearance usually needs citizenship and takes months to get.",
+    ),
+    (
+        "Degree",
+        r"\b(?:(?:bachelor(?:'s|s)?|master(?:'s|s)?|BS|BA|MS|PhD)\s*(?:degree)?\s*"
+        r"(?:is\s+)?required|required[:,]?\s*(?:bachelor|master|BS|BA|MS|PhD)|degree required)\b",
+        "Say where your degree is from and when it finishes.",
+    ),
+    (
+        "On site",
+        r"\b(?:on-?site only|100% on-?site|fully on-?site|no remote|remote is not|"
+        r"must (?:be able to )?(?:work |report )?(?:on-?site|in(?:-| )office)|"
+        r"\d\s*days? (?:per|a) week in (?:the )?office)\b",
+        "Check the commute, or whether you can relocate.",
+    ),
+    (
+        "Driving",
+        r"\b(?:valid driver(?:'s|s)? licen[cs]e|must be able to drive|clean driving record)\b",
+        "You need a licence valid where the job is.",
+    ),
+)
+
+
+@dataclass(frozen=True)
+class Gate:
+    """A hard requirement found in the post, with the sentence it came from."""
+
+    kind: str
+    advice: str
+    sentence: str
+
+
 @dataclass(frozen=True)
 class YearsRequirement:
     """A "N years of X" line from the job post, kept with the sentence it came from."""
@@ -71,6 +118,7 @@ class Requirements:
     required: set[str] = field(default_factory=set)
     preferred: set[str] = field(default_factory=set)
     years: list[YearsRequirement] = field(default_factory=list)
+    gates: list[Gate] = field(default_factory=list)
 
 
 def read_years(sentence: str) -> int | None:
@@ -81,6 +129,21 @@ def read_years(sentence: str) -> int | None:
             return int(match.group("low") or match.group("one"))
     worded = _WORD_YEARS.search(sentence)
     return _WORD_NUMBERS[worded.group("word").lower()] if worded else None
+
+
+_GATES = tuple((kind, re.compile(pattern, re.I), advice) for kind, pattern, advice in GATES)
+
+
+def read_gates(job: str) -> list[Gate]:
+    """Hard requirements in a job post, at most one per kind, with the sentence that said it."""
+    found: dict[str, Gate] = {}
+    for line in job[:MAX_TEXT].splitlines():
+        for sentence in _SENTENCE.split(line):
+            text = " ".join(sentence.split()).strip(" \t•-*·")
+            for kind, pattern, advice in _GATES:
+                if kind not in found and pattern.search(text):
+                    found[kind] = Gate(kind, advice, text[:180])
+    return [found[kind] for kind, _, _ in _GATES if kind in found]
 
 
 def read_job(job: str) -> Requirements:
@@ -110,6 +173,7 @@ def read_job(job: str) -> Requirements:
             text = " ".join(sentence.split()).strip(" \t•-*·")
             for skill in skills or [None]:
                 reqs.years.append(YearsRequirement(years, skill, not optional, text[:180]))
+    reqs.gates = read_gates(job)
     reqs.preferred -= reqs.required  # asked for anywhere as required wins
     return reqs
 
@@ -130,6 +194,7 @@ class Analysis:
     resume_skills: set[str]
     notes: list[str] = field(default_factory=list)
     years: list[YearsRequirement] = field(default_factory=list)  # "N years" lines, not scored
+    gates: list[Gate] = field(default_factory=list)  # hard requirements, not scored
 
 
 _SKILLS_LIST = re.compile(r"^(?:technical\s+)?(?:skills|tools|technologies|tech stack|languages)\b", re.I)
@@ -180,9 +245,14 @@ def analyze(job: str, resume: str) -> Analysis:
         notes.append("No skills recognised in the job post, so there is no score. Paste the full requirements section.")
     if not have:
         notes.append("No skills recognised in the resume. Paste it as plain text, including your skills section.")
+    if reqs.gates:
+        notes.append(
+            "This post has requirements no rewording can satisfy, listed below. "
+            "Read those first: they decide whether applying is worth it."
+        )
     if reqs.years:
         notes.append(
             "This post asks for years of experience. Only you can judge those, "
             "so they are listed separately and are not part of the score."
         )
-    return Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years)
+    return Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years, reqs.gates)
