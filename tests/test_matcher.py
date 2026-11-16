@@ -1,3 +1,6 @@
+import pytest
+
+from app import matcher as m
 from app.matcher import Match, analyze, evidence_line, fit_score, read_job
 
 JOB = """DevOps Engineer Intern
@@ -83,3 +86,53 @@ def test_evidence_is_trimmed_and_cleaned():
 def test_very_long_input_is_capped():
     a = analyze("Python\n" * 50_000, "Python\n" * 50_000)
     assert [m.skill for m in a.matched] == ["Python"]
+
+
+# -- years of experience ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("sentence", "expected"),
+    [
+        ("5+ years of Python", 5),
+        ("5 years experience", 5),
+        ("5 years in a DevOps role", 5),
+        ("3-5 years of Docker", 3),
+        ("3 to 5 yrs of hands-on testing", 3),
+        ("2–4 years with Kubernetes, preferred", 2),
+        ("At least three years of experience", 3),
+        ("Minimum of two years", 2),
+        ("Experience with Python", None),
+        ("Founded in 2019", None),
+        ("A 10 year warranty", None),
+        ("Our 25 years in business", 25),  # context words cannot tell this apart; a known limit
+    ],
+)
+def test_read_years_finds_the_lowest_number_asked_for(sentence, expected):
+    assert m.read_years(sentence) == expected
+
+
+def test_years_are_listed_per_skill_and_kept_out_of_the_score():
+    job = "Requirements\n- 5+ years of Python and Docker\n- At least three years leading teams\n"
+    analysis = m.analyze(job, "Python and Docker every day.")
+    assert [(y.years, y.skill, y.required) for y in analysis.years] == [
+        (5, "Docker", True),
+        (5, "Python", True),
+        (3, None, True),
+    ]
+    assert analysis.years[0].label() == "5+ years of Docker"
+    assert analysis.years[2].label() == "3+ years of experience"
+    # Both skills still matched, so the score is full: years are judged by the person.
+    assert analysis.score == 100
+    assert any("years of experience" in note for note in analysis.notes)
+
+
+def test_a_years_line_that_says_preferred_is_not_required():
+    reqs = m.read_job("Kubernetes is a plus, 2-4 years with it preferred")
+    assert [(y.years, y.skill, y.required) for y in reqs.years] == [(2, "Kubernetes", False)]
+
+
+def test_no_years_in_the_post_means_no_note():
+    analysis = m.analyze("We use Python.", "Python every day.")
+    assert analysis.years == []
+    assert analysis.notes == []

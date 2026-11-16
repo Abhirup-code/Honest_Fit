@@ -23,12 +23,64 @@ _PREFERRED_LINE = re.compile(
     r"\b(?:preferred|a plus|nice to have|bonus|ideally|desired|is helpful|familiarity)\b", re.I
 )
 _SENTENCE = re.compile(r"(?<=[.;!?])\s+")
+# "5+ years", "3-5 years of experience", "at least two years". Years are the requirement people
+# are screened out on most often, and a skill match alone says nothing about them.
+_YEARS = re.compile(
+    r"(?:(?P<low>\d{1,2})\s*(?:\+|plus)?\s*(?:-|–|to)\s*(?P<high>\d{1,2})|(?P<one>\d{1,2})\s*\+?)"
+    r"\s*(?:\+\s*)?(?:yrs?|years?)\b",
+    re.I,
+)
+_WORD_YEARS = re.compile(
+    r"\b(?:at least|minimum(?: of)?|min\.?)\s+(?P<word>one|two|three|four|five|six|seven|eight|nine|ten)"
+    r"\s+(?:yrs?|years?)\b",
+    re.I,
+)
+# What has to follow the number for it to be a requirement. Without this, "a 10 year warranty"
+# and "our 25 years in business" would be read as asking for experience.
+_YEARS_CONTEXT = re.compile(r"^\W*(?:of|in|with|experience|exp\b|working|hands[- ]on|building|as\b)", re.I)
+_WORD_NUMBERS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
+
+
+@dataclass(frozen=True)
+class YearsRequirement:
+    """A "N years of X" line from the job post, kept with the sentence it came from."""
+
+    years: int
+    skill: str | None  # None when the post says "N years of experience" with no skill named
+    required: bool
+    sentence: str
+
+    def label(self) -> str:
+        what = f" of {self.skill}" if self.skill else " of experience"
+        return f"{self.years}+ years{what}"
 
 
 @dataclass
 class Requirements:
     required: set[str] = field(default_factory=set)
     preferred: set[str] = field(default_factory=set)
+    years: list[YearsRequirement] = field(default_factory=list)
+
+
+def read_years(sentence: str) -> int | None:
+    """The smallest number of years a sentence asks for, or None. A range takes its low end,
+    because "3-5 years" screens on 3."""
+    for match in _YEARS.finditer(sentence):
+        if _YEARS_CONTEXT.match(sentence[match.end() : match.end() + 30]):
+            return int(match.group("low") or match.group("one"))
+    worded = _WORD_YEARS.search(sentence)
+    return _WORD_NUMBERS[worded.group("word").lower()] if worded else None
 
 
 def read_job(job: str) -> Requirements:
@@ -48,6 +100,16 @@ def read_job(job: str) -> Requirements:
                 continue
             optional = section == "preferred" or _PREFERRED_LINE.search(sentence)
             (reqs.preferred if optional else reqs.required).update(found)
+    for line in job[:MAX_TEXT].splitlines():
+        for sentence in _SENTENCE.split(line):
+            years = read_years(sentence)
+            if years is None:
+                continue
+            skills = sorted(find_skills(sentence), key=str.lower)
+            optional = bool(_PREFERRED_LINE.search(sentence))
+            text = " ".join(sentence.split()).strip(" \t•-*·")
+            for skill in skills or [None]:
+                reqs.years.append(YearsRequirement(years, skill, not optional, text[:180]))
     reqs.preferred -= reqs.required  # asked for anywhere as required wins
     return reqs
 
@@ -67,6 +129,7 @@ class Analysis:
     missing: list[Match]
     resume_skills: set[str]
     notes: list[str] = field(default_factory=list)
+    years: list[YearsRequirement] = field(default_factory=list)  # "N years" lines, not scored
 
 
 _SKILLS_LIST = re.compile(r"^(?:technical\s+)?(?:skills|tools|technologies|tech stack|languages)\b", re.I)
@@ -117,4 +180,9 @@ def analyze(job: str, resume: str) -> Analysis:
         notes.append("No skills recognised in the job post, so there is no score. Paste the full requirements section.")
     if not have:
         notes.append("No skills recognised in the resume. Paste it as plain text, including your skills section.")
-    return Analysis(fit_score(matched, missing), matched, missing, have, notes)
+    if reqs.years:
+        notes.append(
+            "This post asks for years of experience. Only you can judge those, "
+            "so they are listed separately and are not part of the score."
+        )
+    return Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years)

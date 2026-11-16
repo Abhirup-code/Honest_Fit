@@ -52,6 +52,21 @@
     </div>
     {% for note in a.notes %}<p class="note">{{ note }}</p>{% endfor %}
 
+    {% if a.years %}
+    <section aria-labelledby="years-heading" class="years">
+      <h3 id="years-heading">Years of experience asked for ({{ a.years | length }})</h3>
+      <p class="muted small">Not part of the score. Check each against your own history before you apply.</p>
+      <ul class="skills">
+        {% for y in a.years %}
+        <li>
+          <strong>{{ y.label() }}</strong> <span class="tag {{ 'tag-required' if y.required }}">{{ "required" if y.required else "nice to have" }}</span>
+          <p class="evidence">“{{ y.sentence }}”</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
     <div class="columns">
       <section aria-labelledby="have-heading">
         <h3 id="have-heading">You have ({{ a.matched | length }})</h3>
