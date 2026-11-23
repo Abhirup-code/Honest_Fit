@@ -6,6 +6,12 @@ All notable changes to Honest Fit are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- A score built on one or two recognised skills is now labelled "hint only" beside the number, and a note says
+  how many comparisons it rests on. A post that describes the work in prose rather than listing tools could
+  otherwise show 100% from a single match, which was the most flattering number on the page and the least
+  earned. `skills_compared` and `thin` are in the JSON API for callers that show the score.
+
 ### Fixed
 - The on-site hard requirement was only found when a post wrote "N days per week in the office". Real posts say
   "5 days/week in our New York office", "4 days/week in person", "work full time, in person, in Chicago" and

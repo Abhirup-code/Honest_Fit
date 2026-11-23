@@ -198,6 +198,13 @@ class Match:
     related: list[str] = field(default_factory=list)  # for a missing skill: what you have that is similar
 
 
+# Under this many recognised skills, the percentage says more about the catalogue than about the
+# fit: one required skill matched reads as 100%, which is the most flattering number on the page
+# and the least earned. A post can be real and still land here, because it describes the work in
+# prose instead of listing tools.
+THIN_EVIDENCE = 3
+
+
 @dataclass
 class Analysis:
     score: int | None  # 0-100, or None when the job post names no skills we recognise
@@ -207,6 +214,16 @@ class Analysis:
     notes: list[str] = field(default_factory=list)
     years: list[YearsRequirement] = field(default_factory=list)  # "N years" lines, not scored
     gates: list[Gate] = field(default_factory=list)  # hard requirements, not scored
+
+    @property
+    def skills_compared(self) -> int:
+        """How many of the post's skills the score is actually based on."""
+        return len(self.matched) + len(self.missing)
+
+    @property
+    def thin(self) -> bool:
+        """True when there is a score but too little behind it to read as a measurement."""
+        return self.score is not None and self.skills_compared < THIN_EVIDENCE
 
 
 _SKILLS_LIST = re.compile(r"^(?:technical\s+)?(?:skills|tools|technologies|tech stack|languages)\b", re.I)
@@ -267,4 +284,13 @@ def analyze(job: str, resume: str) -> Analysis:
             "This post asks for years of experience. Only you can judge those, "
             "so they are listed separately and are not part of the score."
         )
-    return Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years, reqs.gates)
+    result = Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years, reqs.gates)
+    if result.thin:
+        count = result.skills_compared
+        one = count == 1
+        notes.append(
+            f"Only {count} skill{'' if one else 's'} in this post {'was' if one else 'were'} recognised, so "
+            f"{result.score}% rests on {count} comparison{'' if one else 's'} and is a hint at best. "
+            "Paste the full requirements section, or read the lists below instead of the number."
+        )
+    return result

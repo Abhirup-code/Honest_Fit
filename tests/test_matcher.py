@@ -135,7 +135,7 @@ def test_a_years_line_that_says_preferred_is_not_required():
 def test_no_years_in_the_post_means_no_note():
     analysis = m.analyze("We use Python.", "Python every day.")
     assert analysis.years == []
-    assert analysis.notes == []
+    assert not any("years of experience" in note for note in analysis.notes)
 
 
 @pytest.mark.parametrize(
@@ -212,3 +212,33 @@ def test_hard_requirements_reach_the_report_without_touching_the_score():
 def test_a_long_sentence_is_shortened_for_the_page():
     job = "We cannot sponsor visas " + "x" * 300 + "."
     assert len(m.read_gates(job)[0].sentence) == 180
+
+
+def test_a_score_from_one_skill_is_marked_as_a_hint():
+    a = m.analyze("Requirements\nExperience with JIRA.", "I used JIRA daily.")
+    assert a.score == 100
+    assert a.skills_compared == 1
+    assert a.thin
+    assert any("1 skill in this post was recognised" in n for n in a.notes)
+    assert any("hint at best" in n for n in a.notes)
+
+
+def test_a_score_from_enough_skills_is_not_marked():
+    job = "Requirements\nPython, Docker and AWS.\nKubernetes is required."
+    a = m.analyze(job, "Python and Docker.")
+    assert a.skills_compared >= m.THIN_EVIDENCE
+    assert not a.thin
+    assert not any("hint at best" in n for n in a.notes)
+
+
+def test_no_recognised_skills_is_not_called_thin_because_there_is_no_score():
+    a = m.analyze("We want a thoughtful person.", "I am thoughtful.")
+    assert a.score is None
+    assert not a.thin
+    assert any("no score" in n for n in a.notes)
+
+
+def test_the_thin_note_uses_plural_wording_for_two_skills():
+    a = m.analyze("Requirements\nPython and Docker.", "Python and Docker.")
+    assert a.skills_compared == 2
+    assert any("2 skills in this post were recognised" in n for n in a.notes)
