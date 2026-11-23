@@ -6,6 +6,13 @@ All notable changes to Honest Fit are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- The on-site hard requirement was only found when a post wrote "N days per week in the office". Real posts say
+  "5 days/week in our New York office", "4 days/week in person", "work full time, in person, in Chicago" and
+  "In office", and all of those were missed, which is the one gate an applicant most needs to see. Thirteen
+  phrasings are now recognised, and nine lines that merely mention an office or being in person are still not
+  treated as a location rule.
+
 ### Security
 - pypdf raised to 6.21.4 and opentelemetry-api to 1.45.2 ahead of the two-week cooldown.
   pypdf 6.21.3 and 6.21.4 fix seven denial-of-service advisories (CVE-2026-119203 to -119209) in which a

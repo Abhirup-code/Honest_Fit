@@ -152,6 +152,12 @@ def test_no_years_in_the_post_means_no_note():
         ("This role is 100% onsite in Austin.", "On site"),
         ("You must be able to work onsite.", "On site"),
         ("4 days per week in the office.", "On site"),
+        ("5 days/week in our New York or San Francisco office.", "On site"),
+        ("4 days/week in person with 1 day remote.", "On site"),
+        ("Able to work full time, in person, in Chicago starting in January 2027.", "On site"),
+        ("This role is in office, full-time.", "On site"),
+        ("Hybrid: 2 days/week onsite.", "On site"),
+        ("This is an on-site role.", "On site"),
         ("A valid driver's license is required.", "Driving"),
     ],
 )
@@ -170,6 +176,12 @@ def test_hard_requirements_are_recognised(sentence, kind):
         "This role is fully remote.",
         "Clearance is not needed for this team.",
         "You will drive our testing strategy.",
+        # "in person" and a days-per-week count both show up in lines that are not a location rule.
+        "Interviews are conducted in person.",
+        "We meet in person twice a year for an offsite.",
+        "You will present in person to customers occasionally.",
+        "Our team is distributed across 5 offices.",
+        "5 days of paid volunteering a week.",
     ],
 )
 def test_ordinary_lines_are_not_hard_requirements(sentence):

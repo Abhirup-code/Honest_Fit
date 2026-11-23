@@ -76,10 +76,22 @@ GATES: tuple[tuple[str, str, str], ...] = (
         "Say where your degree is from and when it finishes.",
     ),
     (
+        # Posts say this a dozen ways. "5 days/week in our New York office" and "work full time,
+        # in person, in Chicago" are both an on-site requirement, and both were missed when this
+        # only looked for "N days per week in the office". The days-per-week branch needs an
+        # office word later in the same sentence, so "5 days of paid leave a week" stays out, and
+        # "in person" needs a working verb or a place beside it, so "interviews are in person" does
+        # too.
         "On site",
-        r"\b(?:on-?site only|100% on-?site|fully on-?site|no remote|remote is not|"
+        r"(?:on-?site only|100%\s*on-?site|fully\s*on-?site|no remote|remote is not|"
         r"must (?:be able to )?(?:work |report )?(?:on-?site|in(?:-| )office)|"
-        r"\d\s*days? (?:per|a) week in (?:the )?office)\b",
+        r"\d\s*days?\s*(?:/|per|a)\s*week\b(?=[^.]*\b(?:office|on-?site|in[- ]person|in[- ]office)\b)|"
+        r"\b(?:role|position|job|work)\s+is\s+(?:fully\s+|100%\s+)?(?:in[- ]office|in[- ]person|on-?site)\b|"
+        r"\b(?:is|are)\s+(?:an?\s+)?(?:fully\s+)?(?:in[- ]office|on-?site)\s+(?:role|position|job)\b|"
+        r"\bwork\b[^.]{0,30}\bin[- ]person\b|"
+        r"\bin[- ]person\b[^.]{0,20}\bin\s+[A-Z][a-z]+|"
+        r"\b(?:based|located)\s+(?:in[- ]office|on-?site)\b|"
+        r"^\s*in[- ]office\b)",
         "Check the commute, or whether you can relocate.",
     ),
     (
