@@ -13,6 +13,10 @@ All notable changes to Honest Fit are listed here. The format follows
   earned. `skills_compared` and `thin` are in the JSON API for callers that show the score.
 
 ### Fixed
+- A job post or resume longer than 20,000 characters was cut silently, and anything past the cut was reported
+  as absent rather than unread. A 36,000 character post with "Must be a US citizen" near the end came back with
+  no hard requirements at all. Both inputs now say how many characters went unread, and the JSON carries
+  `job_unread` and `resume_unread`.
 - The on-site hard requirement was only found when a post wrote "N days per week in the office". Real posts say
   "5 days/week in our New York office", "4 days/week in person", "work full time, in person, in Chicago" and
   "In office", and all of those were missed, which is the one gate an applicant most needs to see. Thirteen

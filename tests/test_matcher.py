@@ -242,3 +242,25 @@ def test_the_thin_note_uses_plural_wording_for_two_skills():
     a = m.analyze("Requirements\nPython and Docker.", "Python and Docker.")
     assert a.skills_compared == 2
     assert any("2 skills in this post were recognised" in n for n in a.notes)
+
+
+def test_a_job_post_past_the_limit_says_what_was_not_read():
+    job = "Requirements\nPython, Docker and AWS.\n" + ("filler\n" * 3000) + "Must be a US citizen.\n"
+    a = m.analyze(job, "Python")
+    assert a.job_unread == len(job) - m.MAX_TEXT
+    assert any("characters of the job post were read" in n for n in a.notes)
+    # The point of the note: the gate below the cut was never seen.
+    assert [g.kind for g in a.gates] == []
+
+
+def test_a_resume_past_the_limit_says_so_separately():
+    a = m.analyze("Requirements\nPython, Docker and AWS.", "Python\n" + "x" * 25_000)
+    assert a.resume_unread == len("Python\n") + 25_000 - m.MAX_TEXT
+    assert any("characters of your resume were read" in n for n in a.notes)
+    assert not any("job post were read" in n for n in a.notes)
+
+
+def test_ordinary_lengths_say_nothing_about_truncation():
+    a = m.analyze("Requirements\nPython, Docker and AWS.", "Python and Docker.")
+    assert (a.job_unread, a.resume_unread) == (0, 0)
+    assert not any("were read" in n for n in a.notes)

@@ -214,6 +214,9 @@ class Analysis:
     notes: list[str] = field(default_factory=list)
     years: list[YearsRequirement] = field(default_factory=list)  # "N years" lines, not scored
     gates: list[Gate] = field(default_factory=list)  # hard requirements, not scored
+    # Characters of each input that were past MAX_TEXT and never read.
+    job_unread: int = 0
+    resume_unread: int = 0
 
     @property
     def skills_compared(self) -> int:
@@ -258,6 +261,10 @@ def fit_score(matched: list[Match], missing: list[Match]) -> int | None:
 
 
 def analyze(job: str, resume: str) -> Analysis:
+    # What is cut here is simply not looked at, so it has to be said out loud. A gate sitting past
+    # the limit, which is where boilerplate and legal text live, would otherwise go unreported and
+    # the post would look clear.
+    job_unread, resume_unread = max(len(job) - MAX_TEXT, 0), max(len(resume) - MAX_TEXT, 0)
     job, resume = job[:MAX_TEXT], resume[:MAX_TEXT]
     reqs = read_job(job)
     have = find_skills(resume)
@@ -284,7 +291,28 @@ def analyze(job: str, resume: str) -> Analysis:
             "This post asks for years of experience. Only you can judge those, "
             "so they are listed separately and are not part of the score."
         )
-    result = Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years, reqs.gates)
+    if job_unread:
+        notes.append(
+            f"Only the first {MAX_TEXT:,} characters of the job post were read, and {job_unread:,} were not. "
+            "Anything after that point, hard requirements included, has not been checked. "
+            "Paste the requirements section on its own."
+        )
+    if resume_unread:
+        notes.append(
+            f"Only the first {MAX_TEXT:,} characters of your resume were read, and {resume_unread:,} were not. "
+            "Skills further down may be missing from the match."
+        )
+    result = Analysis(
+        fit_score(matched, missing),
+        matched,
+        missing,
+        have,
+        notes,
+        reqs.years,
+        reqs.gates,
+        job_unread,
+        resume_unread,
+    )
     if result.thin:
         count = result.skills_compared
         one = count == 1
