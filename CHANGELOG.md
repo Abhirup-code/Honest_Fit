@@ -13,6 +13,12 @@ All notable changes to Honest Fit are listed here. The format follows
   earned. `skills_compared` and `thin` are in the JSON API for callers that show the score.
 
 ### Fixed
+- "0-1 years as a software engineer" was reported as a requirement for "0+ years of experience". A floor of
+  zero screens nobody out, so entry-level ranges no longer appear under years of experience, and a post whose
+  only years line is one of them no longer carries the years note.
+- A years requirement stated twice in one post, once in the requirements list and again in the blurb, was
+  listed twice. Identical requirements are now reported once, and required beats preferred when a post says
+  both.
 - A job post or resume longer than 20,000 characters was cut silently, and anything past the cut was reported
   as absent rather than unread. A 36,000 character post with "Must be a US citizen" near the end came back with
   no hard requirements at all. Both inputs now say how many characters went unread, and the JSON carries

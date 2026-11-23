@@ -175,16 +175,26 @@ def read_job(job: str) -> Requirements:
                 continue
             optional = section == "preferred" or _PREFERRED_LINE.search(sentence)
             (reqs.preferred if optional else reqs.required).update(found)
+    # Keyed by what the requirement is, so a post that states the same one twice, in its
+    # requirements list and again in its blurb, is reported once.
+    found_years: dict[tuple[int, str | None], YearsRequirement] = {}
     for line in job[:MAX_TEXT].splitlines():
         for sentence in _SENTENCE.split(line):
             years = read_years(sentence)
-            if years is None:
+            # A floor of zero is not a floor. "0-1 years as a software engineer" and "0 to 2 years"
+            # are entry-level markers, and listing them as "0+ years" under what you must clear
+            # was noise on exactly the postings most worth applying to.
+            if not years:
                 continue
             skills = sorted(find_skills(sentence), key=str.lower)
             optional = bool(_PREFERRED_LINE.search(sentence))
             text = " ".join(sentence.split()).strip(" \t•-*·")
             for skill in skills or [None]:
-                reqs.years.append(YearsRequirement(years, skill, not optional, text[:180]))
+                already = found_years.get((years, skill))
+                # Stated as required anywhere beats stated as preferred, as with the skills above.
+                if already is None or (not already.required and not optional):
+                    found_years[(years, skill)] = YearsRequirement(years, skill, not optional, text[:180])
+    reqs.years = list(found_years.values())
     reqs.gates = read_gates(job)
     reqs.preferred -= reqs.required  # asked for anywhere as required wins
     return reqs

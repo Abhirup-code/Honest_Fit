@@ -264,3 +264,39 @@ def test_ordinary_lengths_say_nothing_about_truncation():
     a = m.analyze("Requirements\nPython, Docker and AWS.", "Python and Docker.")
     assert (a.job_unread, a.resume_unread) == (0, 0)
     assert not any("were read" in n for n in a.notes)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "0-1 years as a software engineer",
+        "0 to 2 years of experience",
+        "0+ years of experience required",
+    ],
+)
+def test_a_floor_of_zero_years_is_not_a_requirement(sentence):
+    reqs = m.read_job(f"Requirements\n{sentence}")
+    assert reqs.years == []
+
+
+def test_the_same_years_requirement_stated_twice_is_reported_once():
+    job = "Requirements\n5+ years of Python experience.\nAbout you\n5+ years of Python experience."
+    assert [(y.years, y.skill) for y in m.read_job(job).years] == [(5, "Python")]
+
+
+def test_required_wins_when_the_same_years_line_appears_both_ways():
+    job = "Preferred\n3 years of Docker experience is a plus.\nRequirements\n3 years of Docker experience."
+    years = m.read_job(job).years
+    assert [(y.years, y.skill, y.required) for y in years] == [(3, "Docker", True)]
+
+
+def test_different_year_counts_for_one_skill_are_both_kept():
+    job = "Requirements\n5 years of Python experience.\n2 years of Python experience in a team."
+    assert sorted(y.years for y in m.read_job(job).years) == [2, 5]
+
+
+def test_an_entry_level_post_gets_no_years_note():
+    job = "Requirements\n0-1 years as a software engineer.\nPython, Docker and AWS."
+    analysis = m.analyze(job, "Python and Docker.")
+    assert analysis.years == []
+    assert not any("years of experience" in note for note in analysis.notes)
