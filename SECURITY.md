@@ -33,5 +33,5 @@ Only the latest version on `main` receives fixes.
   and opentelemetry-api 1.45.2 for CVE-2026-126360. Dependabot uses the same two-week cooldown.
 - Every GitHub Action is pinned to a full commit hash, and workflows default to read-only permissions.
 - CI runs ruff (with security rules), bandit, CodeQL, gitleaks over the full history, pip-audit, Trivy on the
-  container image, zizmor on the workflows, dependency review on pull requests, OpenSSF Scorecard, and
+  container image, zizmor on the workflows, OpenSSF Scorecard, and
   Atheris fuzzing of the analysis, the honesty guard, and the upload readers.
