@@ -76,10 +76,22 @@ GATES: tuple[tuple[str, str, str], ...] = (
         "Say where your degree is from and when it finishes.",
     ),
     (
+        # Posts say this a dozen ways. "5 days/week in our New York office" and "work full time,
+        # in person, in Chicago" are both an on-site requirement, and both were missed when this
+        # only looked for "N days per week in the office". The days-per-week branch needs an
+        # office word later in the same sentence, so "5 days of paid leave a week" stays out, and
+        # "in person" needs a working verb or a place beside it, so "interviews are in person" does
+        # too.
         "On site",
-        r"\b(?:on-?site only|100% on-?site|fully on-?site|no remote|remote is not|"
+        r"(?:on-?site only|100%\s*on-?site|fully\s*on-?site|no remote|remote is not|"
         r"must (?:be able to )?(?:work |report )?(?:on-?site|in(?:-| )office)|"
-        r"\d\s*days? (?:per|a) week in (?:the )?office)\b",
+        r"\d\s*days?\s*(?:/|per|a)\s*week\b(?=[^.]*\b(?:office|on-?site|in[- ]person|in[- ]office)\b)|"
+        r"\b(?:role|position|job|work)\s+is\s+(?:fully\s+|100%\s+)?(?:in[- ]office|in[- ]person|on-?site)\b|"
+        r"\b(?:is|are)\s+(?:an?\s+)?(?:fully\s+)?(?:in[- ]office|on-?site)\s+(?:role|position|job)\b|"
+        r"\bwork\b[^.]{0,30}\bin[- ]person\b|"
+        r"\bin[- ]person\b[^.]{0,20}\bin\s+[A-Z][a-z]+|"
+        r"\b(?:based|located)\s+(?:in[- ]office|on-?site)\b|"
+        r"^\s*in[- ]office\b)",
         "Check the commute, or whether you can relocate.",
     ),
     (
@@ -163,16 +175,26 @@ def read_job(job: str) -> Requirements:
                 continue
             optional = section == "preferred" or _PREFERRED_LINE.search(sentence)
             (reqs.preferred if optional else reqs.required).update(found)
+    # Keyed by what the requirement is, so a post that states the same one twice, in its
+    # requirements list and again in its blurb, is reported once.
+    found_years: dict[tuple[int, str | None], YearsRequirement] = {}
     for line in job[:MAX_TEXT].splitlines():
         for sentence in _SENTENCE.split(line):
             years = read_years(sentence)
-            if years is None:
+            # A floor of zero is not a floor. "0-1 years as a software engineer" and "0 to 2 years"
+            # are entry-level markers, and listing them as "0+ years" under what you must clear
+            # was noise on exactly the postings most worth applying to.
+            if not years:
                 continue
             skills = sorted(find_skills(sentence), key=str.lower)
             optional = bool(_PREFERRED_LINE.search(sentence))
             text = " ".join(sentence.split()).strip(" \t•-*·")
             for skill in skills or [None]:
-                reqs.years.append(YearsRequirement(years, skill, not optional, text[:180]))
+                already = found_years.get((years, skill))
+                # Stated as required anywhere beats stated as preferred, as with the skills above.
+                if already is None or (not already.required and not optional):
+                    found_years[(years, skill)] = YearsRequirement(years, skill, not optional, text[:180])
+    reqs.years = list(found_years.values())
     reqs.gates = read_gates(job)
     reqs.preferred -= reqs.required  # asked for anywhere as required wins
     return reqs
@@ -186,6 +208,13 @@ class Match:
     related: list[str] = field(default_factory=list)  # for a missing skill: what you have that is similar
 
 
+# Under this many recognised skills, the percentage says more about the catalogue than about the
+# fit: one required skill matched reads as 100%, which is the most flattering number on the page
+# and the least earned. A post can be real and still land here, because it describes the work in
+# prose instead of listing tools.
+THIN_EVIDENCE = 3
+
+
 @dataclass
 class Analysis:
     score: int | None  # 0-100, or None when the job post names no skills we recognise
@@ -195,6 +224,19 @@ class Analysis:
     notes: list[str] = field(default_factory=list)
     years: list[YearsRequirement] = field(default_factory=list)  # "N years" lines, not scored
     gates: list[Gate] = field(default_factory=list)  # hard requirements, not scored
+    # Characters of each input that were past MAX_TEXT and never read.
+    job_unread: int = 0
+    resume_unread: int = 0
+
+    @property
+    def skills_compared(self) -> int:
+        """How many of the post's skills the score is actually based on."""
+        return len(self.matched) + len(self.missing)
+
+    @property
+    def thin(self) -> bool:
+        """True when there is a score but too little behind it to read as a measurement."""
+        return self.score is not None and self.skills_compared < THIN_EVIDENCE
 
 
 _SKILLS_LIST = re.compile(r"^(?:technical\s+)?(?:skills|tools|technologies|tech stack|languages)\b", re.I)
@@ -229,6 +271,10 @@ def fit_score(matched: list[Match], missing: list[Match]) -> int | None:
 
 
 def analyze(job: str, resume: str) -> Analysis:
+    # What is cut here is simply not looked at, so it has to be said out loud. A gate sitting past
+    # the limit, which is where boilerplate and legal text live, would otherwise go unreported and
+    # the post would look clear.
+    job_unread, resume_unread = max(len(job) - MAX_TEXT, 0), max(len(resume) - MAX_TEXT, 0)
     job, resume = job[:MAX_TEXT], resume[:MAX_TEXT]
     reqs = read_job(job)
     have = find_skills(resume)
@@ -255,4 +301,34 @@ def analyze(job: str, resume: str) -> Analysis:
             "This post asks for years of experience. Only you can judge those, "
             "so they are listed separately and are not part of the score."
         )
-    return Analysis(fit_score(matched, missing), matched, missing, have, notes, reqs.years, reqs.gates)
+    if job_unread:
+        notes.append(
+            f"Only the first {MAX_TEXT:,} characters of the job post were read, and {job_unread:,} were not. "
+            "Anything after that point, hard requirements included, has not been checked. "
+            "Paste the requirements section on its own."
+        )
+    if resume_unread:
+        notes.append(
+            f"Only the first {MAX_TEXT:,} characters of your resume were read, and {resume_unread:,} were not. "
+            "Skills further down may be missing from the match."
+        )
+    result = Analysis(
+        fit_score(matched, missing),
+        matched,
+        missing,
+        have,
+        notes,
+        reqs.years,
+        reqs.gates,
+        job_unread,
+        resume_unread,
+    )
+    if result.thin:
+        count = result.skills_compared
+        one = count == 1
+        notes.append(
+            f"Only {count} skill{'' if one else 's'} in this post {'was' if one else 'were'} recognised, so "
+            f"{result.score}% rests on {count} comparison{'' if one else 's'} and is a hint at best. "
+            "Paste the full requirements section, or read the lists below instead of the number."
+        )
+    return result

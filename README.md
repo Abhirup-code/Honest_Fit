@@ -131,7 +131,7 @@ flowchart LR
 | AI without a model | Tests run against a fake Ollama server, including malformed answers, timeouts, oversized output, and a prompt-injection attempt |
 | Accessibility | axe-core finds no WCAG 2.1 AA violations on the form or results, in light and dark mode, on desktop and phone |
 | Static analysis | ruff (including flake8-bandit security rules), bandit, and CodeQL for Python, JavaScript, and the workflows |
-| Supply chain | Every dependency pinned with SHA-256 hashes; only versions at least two weeks old, except documented security fixes; pip-audit, Dependabot with the same cooldown, every Action pinned to a commit, zizmor workflow lint, dependency review |
+| Supply chain | Every dependency pinned with SHA-256 hashes; only versions at least two weeks old, except documented security fixes; pip-audit, Dependabot with the same cooldown, every Action pinned to a commit, zizmor workflow lint |
 | Secrets | gitleaks scans the full git history on every push |
 | Container | Non-root (UID 10001), read-only filesystem, all capabilities dropped, no pip in the image; Trivy fails the build on fixable critical or high vulnerabilities; CI smoke-tests the running container |
 | Uploads | Type checked by contents, not file name; 2 MB and 10-page limits; zip-bomb checks and defusedxml for Word files; parsing in a separate process with a 10-second time limit and a memory cap; never stored |

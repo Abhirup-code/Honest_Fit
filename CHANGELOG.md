@@ -6,6 +6,29 @@ All notable changes to Honest Fit are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- A score built on one or two recognised skills is now labelled "hint only" beside the number, and a note says
+  how many comparisons it rests on. A post that describes the work in prose rather than listing tools could
+  otherwise show 100% from a single match, which was the most flattering number on the page and the least
+  earned. `skills_compared` and `thin` are in the JSON API for callers that show the score.
+
+### Fixed
+- "0-1 years as a software engineer" was reported as a requirement for "0+ years of experience". A floor of
+  zero screens nobody out, so entry-level ranges no longer appear under years of experience, and a post whose
+  only years line is one of them no longer carries the years note.
+- A years requirement stated twice in one post, once in the requirements list and again in the blurb, was
+  listed twice. Identical requirements are now reported once, and required beats preferred when a post says
+  both.
+- A job post or resume longer than 20,000 characters was cut silently, and anything past the cut was reported
+  as absent rather than unread. A 36,000 character post with "Must be a US citizen" near the end came back with
+  no hard requirements at all. Both inputs now say how many characters went unread, and the JSON carries
+  `job_unread` and `resume_unread`.
+- The on-site hard requirement was only found when a post wrote "N days per week in the office". Real posts say
+  "5 days/week in our New York office", "4 days/week in person", "work full time, in person, in Chicago" and
+  "In office", and all of those were missed, which is the one gate an applicant most needs to see. Thirteen
+  phrasings are now recognised, and nine lines that merely mention an office or being in person are still not
+  treated as a location rule.
+
 ### Security
 - pypdf raised to 6.21.4 and opentelemetry-api to 1.45.2 ahead of the two-week cooldown.
   pypdf 6.21.3 and 6.21.4 fix seven denial-of-service advisories (CVE-2026-119203 to -119209) in which a

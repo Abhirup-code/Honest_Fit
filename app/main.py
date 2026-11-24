@@ -56,6 +56,12 @@ def report_json(report: Report) -> dict:
     return {
         "score": a.score,
         "label": fit_label(a.score),
+        # A caller showing the score needs to know when it rests on one or two skills.
+        "skills_compared": a.skills_compared,
+        "thin": a.thin,
+        # Characters past the limit that were never read, so a caller knows the answer is partial.
+        "job_unread": a.job_unread,
+        "resume_unread": a.resume_unread,
         "matched": [{"skill": m.skill, "required": m.required, "evidence": m.evidence} for m in a.matched],
         "missing": [{"skill": m.skill, "required": m.required, "related": m.related} for m in a.missing],
         "notes": a.notes,

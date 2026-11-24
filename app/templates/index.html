@@ -46,8 +46,9 @@
     <div class="score">
       <p class="score-number">{% if a.score is not none %}{{ a.score }}<span>%</span>{% else %}–{% endif %}</p>
       <div>
-        <p class="score-label">{{ fit_label(a.score) }}</p>
-        <p class="muted small">Required skills count twice as much as nice-to-haves.</p>
+        <p class="score-label">{{ fit_label(a.score) }}{% if a.thin %} <span class="muted">(hint only)</span>{% endif %}</p>
+        <p class="muted small">Required skills count twice as much as nice-to-haves.{% if a.thin %}
+          This one is based on {{ a.skills_compared }}.{% endif %}</p>
       </div>
     </div>
     {% for note in a.notes %}<p class="note">{{ note }}</p>{% endfor %}

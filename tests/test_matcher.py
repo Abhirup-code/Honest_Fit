@@ -135,7 +135,7 @@ def test_a_years_line_that_says_preferred_is_not_required():
 def test_no_years_in_the_post_means_no_note():
     analysis = m.analyze("We use Python.", "Python every day.")
     assert analysis.years == []
-    assert analysis.notes == []
+    assert not any("years of experience" in note for note in analysis.notes)
 
 
 @pytest.mark.parametrize(
@@ -152,6 +152,12 @@ def test_no_years_in_the_post_means_no_note():
         ("This role is 100% onsite in Austin.", "On site"),
         ("You must be able to work onsite.", "On site"),
         ("4 days per week in the office.", "On site"),
+        ("5 days/week in our New York or San Francisco office.", "On site"),
+        ("4 days/week in person with 1 day remote.", "On site"),
+        ("Able to work full time, in person, in Chicago starting in January 2027.", "On site"),
+        ("This role is in office, full-time.", "On site"),
+        ("Hybrid: 2 days/week onsite.", "On site"),
+        ("This is an on-site role.", "On site"),
         ("A valid driver's license is required.", "Driving"),
     ],
 )
@@ -170,6 +176,12 @@ def test_hard_requirements_are_recognised(sentence, kind):
         "This role is fully remote.",
         "Clearance is not needed for this team.",
         "You will drive our testing strategy.",
+        # "in person" and a days-per-week count both show up in lines that are not a location rule.
+        "Interviews are conducted in person.",
+        "We meet in person twice a year for an offsite.",
+        "You will present in person to customers occasionally.",
+        "Our team is distributed across 5 offices.",
+        "5 days of paid volunteering a week.",
     ],
 )
 def test_ordinary_lines_are_not_hard_requirements(sentence):
@@ -200,3 +212,91 @@ def test_hard_requirements_reach_the_report_without_touching_the_score():
 def test_a_long_sentence_is_shortened_for_the_page():
     job = "We cannot sponsor visas " + "x" * 300 + "."
     assert len(m.read_gates(job)[0].sentence) == 180
+
+
+def test_a_score_from_one_skill_is_marked_as_a_hint():
+    a = m.analyze("Requirements\nExperience with JIRA.", "I used JIRA daily.")
+    assert a.score == 100
+    assert a.skills_compared == 1
+    assert a.thin
+    assert any("1 skill in this post was recognised" in n for n in a.notes)
+    assert any("hint at best" in n for n in a.notes)
+
+
+def test_a_score_from_enough_skills_is_not_marked():
+    job = "Requirements\nPython, Docker and AWS.\nKubernetes is required."
+    a = m.analyze(job, "Python and Docker.")
+    assert a.skills_compared >= m.THIN_EVIDENCE
+    assert not a.thin
+    assert not any("hint at best" in n for n in a.notes)
+
+
+def test_no_recognised_skills_is_not_called_thin_because_there_is_no_score():
+    a = m.analyze("We want a thoughtful person.", "I am thoughtful.")
+    assert a.score is None
+    assert not a.thin
+    assert any("no score" in n for n in a.notes)
+
+
+def test_the_thin_note_uses_plural_wording_for_two_skills():
+    a = m.analyze("Requirements\nPython and Docker.", "Python and Docker.")
+    assert a.skills_compared == 2
+    assert any("2 skills in this post were recognised" in n for n in a.notes)
+
+
+def test_a_job_post_past_the_limit_says_what_was_not_read():
+    job = "Requirements\nPython, Docker and AWS.\n" + ("filler\n" * 3000) + "Must be a US citizen.\n"
+    a = m.analyze(job, "Python")
+    assert a.job_unread == len(job) - m.MAX_TEXT
+    assert any("characters of the job post were read" in n for n in a.notes)
+    # The point of the note: the gate below the cut was never seen.
+    assert [g.kind for g in a.gates] == []
+
+
+def test_a_resume_past_the_limit_says_so_separately():
+    a = m.analyze("Requirements\nPython, Docker and AWS.", "Python\n" + "x" * 25_000)
+    assert a.resume_unread == len("Python\n") + 25_000 - m.MAX_TEXT
+    assert any("characters of your resume were read" in n for n in a.notes)
+    assert not any("job post were read" in n for n in a.notes)
+
+
+def test_ordinary_lengths_say_nothing_about_truncation():
+    a = m.analyze("Requirements\nPython, Docker and AWS.", "Python and Docker.")
+    assert (a.job_unread, a.resume_unread) == (0, 0)
+    assert not any("were read" in n for n in a.notes)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "0-1 years as a software engineer",
+        "0 to 2 years of experience",
+        "0+ years of experience required",
+    ],
+)
+def test_a_floor_of_zero_years_is_not_a_requirement(sentence):
+    reqs = m.read_job(f"Requirements\n{sentence}")
+    assert reqs.years == []
+
+
+def test_the_same_years_requirement_stated_twice_is_reported_once():
+    job = "Requirements\n5+ years of Python experience.\nAbout you\n5+ years of Python experience."
+    assert [(y.years, y.skill) for y in m.read_job(job).years] == [(5, "Python")]
+
+
+def test_required_wins_when_the_same_years_line_appears_both_ways():
+    job = "Preferred\n3 years of Docker experience is a plus.\nRequirements\n3 years of Docker experience."
+    years = m.read_job(job).years
+    assert [(y.years, y.skill, y.required) for y in years] == [(3, "Docker", True)]
+
+
+def test_different_year_counts_for_one_skill_are_both_kept():
+    job = "Requirements\n5 years of Python experience.\n2 years of Python experience in a team."
+    assert sorted(y.years for y in m.read_job(job).years) == [2, 5]
+
+
+def test_an_entry_level_post_gets_no_years_note():
+    job = "Requirements\n0-1 years as a software engineer.\nPython, Docker and AWS."
+    analysis = m.analyze(job, "Python and Docker.")
+    assert analysis.years == []
+    assert not any("years of experience" in note for note in analysis.notes)
