@@ -7,4 +7,4 @@ zizmor
 # Security floor (PYSEC-2026-4320); see requirements.in.
 certifi>=2026.10.19
 # Security floor (CVE-2026-112906 and related local lock-file attacks), allowed past the cooldown.
-filelock>=4.2.1
+filelock>=4.2.10
