@@ -44,17 +44,55 @@ class ExtractionError(Exception):
     """A friendly reason the file could not be read. Safe to show: always fixed text."""
 
 
+UNSUPPORTED = "That file type is not supported. Upload a PDF, a Word .docx, or a .txt file."
+# How much of a decoded file has to be ordinary text before a legacy encoding is believed. Real
+# prose is essentially all printable; arbitrary bytes read as cp1252 are not.
+PRINTABLE_SHARE = 0.95
+
+
+def decode_text(data: bytes) -> str:
+    """A text upload as a string, whatever a word processor saved it as.
+
+    Only UTF-8 was accepted, so a .txt written by Notepad as "Unicode" (UTF-16) or saved as ANSI
+    with an accent in it was turned away as an unsupported file type, which is both wrong and
+    impossible to act on: it is a .txt file, and it opens fine everywhere else. A UTF-8 byte order
+    mark was accepted but kept, so the first character of the resume, usually the first letter of
+    somebody's name, came through as \ufeff.
+    """
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        try:
+            return data.decode("utf-16")
+        except UnicodeDecodeError:
+            raise ExtractionError(UNSUPPORTED) from None
+    try:
+        return data.decode("utf-8-sig")  # strips the mark when there is one
+    except UnicodeDecodeError:
+        pass
+    # Last resort. cp1252 decodes almost any byte, so the result has to look like writing before
+    # it is believed, otherwise a binary file would arrive as a page of symbols.
+    text = data.decode("cp1252", errors="replace")
+    printable = sum(ch.isprintable() or ch in "\n\r\t" for ch in text)
+    if not text or printable / len(text) < PRINTABLE_SHARE:
+        raise ExtractionError(UNSUPPORTED)
+    return text
+
+
 def detect(data: bytes) -> Kind:
     if data.startswith(b"%PDF-"):
         return "pdf"
     if data.startswith(b"PK\x03\x04"):
         return "docx"
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return "text"  # UTF-16, which is full of NULs by design
     try:
         data.decode("utf-8")
     except UnicodeDecodeError:
-        raise ExtractionError("That file type is not supported. Upload a PDF, a Word .docx, or a .txt file.") from None
+        if b"\x00" in data:
+            raise ExtractionError(UNSUPPORTED) from None
+        decode_text(data)  # raises unless it reads as ordinary writing
+        return "text"
     if b"\x00" in data:
-        raise ExtractionError("That file type is not supported. Upload a PDF, a Word .docx, or a .txt file.")
+        raise ExtractionError(UNSUPPORTED)
     return "text"
 
 
@@ -199,7 +237,7 @@ def extract_resume(data: bytes, isolate: bool = True) -> str:
     if len(data) > MAX_UPLOAD_BYTES:
         raise ExtractionError("That file is over 2 MB. Upload a smaller file or paste the text.")
     kind = detect(data)
-    raw = data.decode("utf-8") if kind == "text" else (_isolated if isolate else _parse)(kind, data)
+    raw = decode_text(data) if kind == "text" else (_isolated if isolate else _parse)(kind, data)
     text = _tidy(raw)
     if not text:
         if kind == "pdf":
