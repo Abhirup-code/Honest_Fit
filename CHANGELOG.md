@@ -7,12 +7,24 @@ All notable changes to Honest Fit are listed here. The format follows
 ## [Unreleased]
 
 ### Added
+- Years requirements are now answered from the resume rather than handed back. Date ranges are read in the
+  forms resumes use (spelled or numeric months, open-ended "Present"), overlapping spans are merged so a
+  month is counted once, and a requirement that names no skill gets a verdict with the shortfall as a
+  number. A requirement that names a skill is deliberately not answered: a date range says when a job ran,
+  not what was in it. `resume_years`, `resume_spans` and `resume_years_partial` are in the JSON.
+- A resume claiming more years than its own dates support is pointed out, with both numbers. A gap under a
+  year is treated as rounding and passes without comment.
+- Text uploads are read as UTF-16 (what Notepad calls "Unicode"), UTF-8 with or without a byte order mark,
+  or cp1252, instead of UTF-8 only. A `.txt` saved by a word processor was being refused as an unsupported
+  file type, and a UTF-8 mark was left glued to the first letter of the name.
 - A score built on one or two recognised skills is now labelled "hint only" beside the number, and a note says
   how many comparisons it rests on. A post that describes the work in prose rather than listing tools could
   otherwise show 100% from a single match, which was the most flattering number on the page and the least
   earned. `skills_compared` and `thin` are in the JSON API for callers that show the score.
 
 ### Fixed
+- A date range in the future was counted as experience, so a typed year or an incoming role bought years of seniority. Ranges starting after this month are dropped and ones merely ending later are clipped to now.
+- A truncated resume no longer gets a years verdict. Its total is a floor rather than a sum, and comparing a floor to "6+ years" produced a confident shortfall that could be the opposite of true.
 - "0-1 years as a software engineer" was reported as a requirement for "0+ years of experience". A floor of
   zero screens nobody out, so entry-level ranges no longer appear under years of experience, and a post whose
   only years line is one of them no longer carries the years note.
