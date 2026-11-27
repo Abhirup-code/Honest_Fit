@@ -179,6 +179,22 @@ def read_gates(job: str) -> list[Gate]:
     return [found[kind] for kind, _, _ in _GATES if kind in found]
 
 
+# How far a resume's own claim may sit above the dates in it before it is worth mentioning. Under
+# a year is rounding, a job listed without dates, or work that predates the history shown.
+CLAIM_GAP_YEARS = 1.0
+
+
+def claimed_years(resume: str) -> int | None:
+    """The largest "N years" the resume says about itself, or None when it says none."""
+    found = []
+    for line in resume.splitlines():
+        for sentence in _SENTENCE.split(line):
+            years = read_years(sentence)
+            if years:
+                found.append(years)
+    return max(found, default=None)
+
+
 def read_job(job: str) -> Requirements:
     """Which catalogued skills a job post asks for, split into required and nice-to-have."""
     reqs = Requirements()
@@ -365,6 +381,14 @@ def analyze(job: str, resume: str) -> Analysis:
         history.total_years(spans) if spans else None,
         tuple(span.text for span in history.merge(spans)),
     )
+    claimed = claimed_years(resume)
+    counted = result.years_to_compare
+    if claimed and counted is not None and claimed - counted >= CLAIM_GAP_YEARS:
+        notes.append(
+            f"Your resume says {claimed}+ years, but the date ranges in it add up to {counted}. "
+            "A reader with a calendar can do the same arithmetic, so it is worth either showing the "
+            "missing dates or revisiting the claim."
+        )
     if result.years_partial and result.years:
         notes.append(
             f"The {result.resume_years} years counted from your resume is a floor, not a total, because "

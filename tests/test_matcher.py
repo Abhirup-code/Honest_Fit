@@ -371,3 +371,51 @@ def test_no_floor_note_when_the_post_asks_for_no_years():
     a = m.analyze("Requirements\nPython, Docker and AWS.", resume)
     assert a.years_partial
     assert not any("is a floor" in n for n in a.notes)
+
+
+JOB_WITH_SKILLS = "Requirements\nPython, Docker and AWS."
+
+
+def test_a_claim_the_dates_do_not_support_is_pointed_out():
+    resume = "IT engineer with 8+ years of experience.\nEngineer  Jul 2021 to Nov 2024"
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    note = next(n for n in a.notes if "add up to" in n)
+    assert "says 8+ years" in note
+    assert "add up to 3.4" in note
+
+
+def test_a_claim_the_dates_support_is_left_alone():
+    resume = "IT engineer with 4+ years.\nEngineer  Jul 2021 to Nov 2024\nSenior  Dec 2024 to Aug 2025"
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_a_small_gap_is_not_worth_mentioning():
+    # 41 months is 3.4 years. A resume saying "4+ years" is rounding, not overclaiming.
+    resume = "4+ years of experience.\nEngineer  Jul 2021 to Nov 2024"
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_no_claim_means_nothing_to_check():
+    a = m.analyze(JOB_WITH_SKILLS, "Engineer  Jul 2021 to Nov 2024")
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_no_dates_means_nothing_to_check_against():
+    a = m.analyze(JOB_WITH_SKILLS, "IT engineer with 8+ years of experience.")
+    assert a.resume_years is None
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_a_truncated_resume_is_not_accused_of_overclaiming():
+    # The total is a floor, so the gap is not evidence of anything.
+    resume = "8+ years of experience.\nEngineer  Jul 2021 to Nov 2024\n" + ("filler " * 4000)
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    assert a.years_partial
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_the_largest_claim_in_the_resume_is_the_one_checked():
+    assert m.claimed_years("2 years here. 8+ years of experience. 3 years there.") == 8
+    assert m.claimed_years("No numbers at all.") is None
