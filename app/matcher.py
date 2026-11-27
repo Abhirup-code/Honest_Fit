@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from . import history
 from .skills import find_skills, mentions, related
 
 MAX_TEXT = 20_000
@@ -124,6 +125,26 @@ class YearsRequirement:
         what = f" of {self.skill}" if self.skill else " of experience"
         return f"{self.years}+ years{what}"
 
+    def verdict(self, resume_years: float | None) -> str | None:
+        """What the resume's own dates say about this line, or None when they cannot say.
+
+        Only a requirement with no skill named can be answered this way. A resume's dates say how
+        long someone has worked, not how much of that was spent on Kubernetes, and quietly
+        treating the two as the same is exactly the kind of flattering guess this tool exists to
+        avoid.
+        """
+        if resume_years is None:
+            return None
+        if self.skill:
+            return (
+                f"Your resume shows {resume_years} years of work in total. It cannot say how much "
+                f"of that was {self.skill}, so this one is still yours to judge."
+            )
+        if resume_years >= self.years:
+            return f"Your resume shows {resume_years} years, which clears this."
+        short = round(self.years - resume_years, 1)
+        return f"Your resume shows {resume_years} years, which is {short} short of this."
+
 
 @dataclass
 class Requirements:
@@ -156,6 +177,22 @@ def read_gates(job: str) -> list[Gate]:
                 if kind not in found and pattern.search(text):
                     found[kind] = Gate(kind, advice, text[:180])
     return [found[kind] for kind, _, _ in _GATES if kind in found]
+
+
+# How far a resume's own claim may sit above the dates in it before it is worth mentioning. Under
+# a year is rounding, a job listed without dates, or work that predates the history shown.
+CLAIM_GAP_YEARS = 1.0
+
+
+def claimed_years(resume: str) -> int | None:
+    """The largest "N years" the resume says about itself, or None when it says none."""
+    found = []
+    for line in resume.splitlines():
+        for sentence in _SENTENCE.split(line):
+            years = read_years(sentence)
+            if years:
+                found.append(years)
+    return max(found, default=None)
 
 
 def read_job(job: str) -> Requirements:
@@ -227,6 +264,24 @@ class Analysis:
     # Characters of each input that were past MAX_TEXT and never read.
     job_unread: int = 0
     resume_unread: int = 0
+    # Years of work the resume's own date ranges add up to, or None when none could be read.
+    resume_years: float | None = None
+    resume_spans: tuple[str, ...] = ()
+
+    @property
+    def years_partial(self) -> bool:
+        """True when dates may exist past the point the resume was cut off."""
+        return bool(self.resume_unread) and self.resume_years is not None
+
+    @property
+    def years_to_compare(self) -> float | None:
+        """The total a requirement may be judged against, or None when it cannot be trusted.
+
+        A truncated resume gives a total that is a floor rather than a sum, and comparing a floor
+        against "5+ years" produces a confident "1.7 short of this" that may be false. The total
+        is still reported; it is just not used to answer anything.
+        """
+        return None if self.years_partial else self.resume_years
 
     @property
     def skills_compared(self) -> int:
@@ -298,8 +353,8 @@ def analyze(job: str, resume: str) -> Analysis:
         )
     if reqs.years:
         notes.append(
-            "This post asks for years of experience. Only you can judge those, "
-            "so they are listed separately and are not part of the score."
+            "This post asks for years of experience. They are listed separately and are not part "
+            "of the score, because a skill match says nothing about them."
         )
     if job_unread:
         notes.append(
@@ -312,6 +367,7 @@ def analyze(job: str, resume: str) -> Analysis:
             f"Only the first {MAX_TEXT:,} characters of your resume were read, and {resume_unread:,} were not. "
             "Skills further down may be missing from the match."
         )
+    spans = history.read_spans(resume)
     result = Analysis(
         fit_score(matched, missing),
         matched,
@@ -322,7 +378,22 @@ def analyze(job: str, resume: str) -> Analysis:
         reqs.gates,
         job_unread,
         resume_unread,
+        history.total_years(spans) if spans else None,
+        tuple(span.text for span in history.merge(spans)),
     )
+    claimed = claimed_years(resume)
+    counted = result.years_to_compare
+    if claimed and counted is not None and claimed - counted >= CLAIM_GAP_YEARS:
+        notes.append(
+            f"Your resume says {claimed}+ years, but the date ranges in it add up to {counted}. "
+            "A reader with a calendar can do the same arithmetic, so it is worth either showing the "
+            "missing dates or revisiting the claim."
+        )
+    if result.years_partial and result.years:
+        notes.append(
+            f"The {result.resume_years} years counted from your resume is a floor, not a total, because "
+            "the end of it was not read. The years requirements below are left for you to judge."
+        )
     if result.thin:
         count = result.skills_compared
         one = count == 1

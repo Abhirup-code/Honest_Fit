@@ -199,3 +199,38 @@ def test_the_isolated_parser_reports_errors_from_the_child():
 def test_results_match_with_and_without_isolation():
     data = (FIXTURES / "resume.docx").read_bytes()
     assert extract_resume(data, isolate=True) == extract_resume(data, isolate=False)
+
+
+def test_a_text_file_saved_as_utf16_is_read():
+    # Notepad calls this "Unicode". It is full of NUL bytes by design, which used to get it
+    # rejected as an unsupported file type.
+    data = "Abhirup Khan\nJul 2021 to Nov 2024\n".encode("utf-16")
+    assert extract.detect(data) == "text"
+    assert "Jul 2021 to Nov 2024" in extract.extract_resume(data, isolate=False)
+
+
+def test_utf16_big_endian_is_read_too():
+    data = b"\xfe\xff" + "Ridge Trail\n".encode("utf-16-be")
+    assert extract.extract_resume(data, isolate=False) == "Ridge Trail"
+
+
+def test_a_byte_order_mark_is_not_part_of_the_name():
+    data = "﻿Abhirup Khan\n".encode()
+    assert extract.extract_resume(data, isolate=False) == "Abhirup Khan"
+
+
+def test_a_file_saved_as_ansi_with_an_accent_is_read():
+    assert extract.extract_resume("Cañón Ridge\n".encode("latin-1"), isolate=False) == "Cañón Ridge"
+
+
+def test_plain_utf8_is_unaffected():
+    assert extract.extract_resume(b"Abhirup Khan\n", isolate=False) == "Abhirup Khan"
+
+
+@pytest.mark.parametrize(
+    "data",
+    [bytes(range(256)) * 4, b"\x00\x01\x02binary\x00", b"\x80\x81\x82\x00\x99"],
+)
+def test_binary_is_still_turned_away(data):
+    with pytest.raises(extract.ExtractionError, match="not supported"):
+        extract.extract_resume(data, isolate=False)

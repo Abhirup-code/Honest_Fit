@@ -300,3 +300,122 @@ def test_an_entry_level_post_gets_no_years_note():
     analysis = m.analyze(job, "Python and Docker.")
     assert analysis.years == []
     assert not any("years of experience" in note for note in analysis.notes)
+
+
+RESUME_WITH_DATES = """
+Senior Engineer      Dec 2024 to Aug 2025
+Engineer             Jul 2021 to Nov 2024
+Intern               Jun 2020 to Jul 2020
+"""
+
+
+def test_the_resume_dates_are_added_up():
+    a = m.analyze("Requirements\nPython, Docker and AWS.", RESUME_WITH_DATES)
+    assert a.resume_years == 4.3  # 52 months of calendar, not 2 + 41 + 9
+    assert len(a.resume_spans) == 2  # the two senior roles run straight on
+
+
+def test_a_plain_years_requirement_is_answered():
+    a = m.analyze("Requirements\nA minimum of 3 years of experience.", RESUME_WITH_DATES)
+    [years] = a.years
+    assert years.verdict(a.resume_years) == "Your resume shows 4.3 years, which clears this."
+
+
+def test_a_years_requirement_the_resume_falls_short_of_says_by_how_much():
+    a = m.analyze("Requirements\nA minimum of 6 years of experience.", RESUME_WITH_DATES)
+    [years] = a.years
+    assert years.verdict(a.resume_years) == "Your resume shows 4.3 years, which is 1.7 short of this."
+
+
+def test_a_skill_specific_requirement_is_not_answered_by_total_experience():
+    a = m.analyze("Requirements\n3+ years of Python experience.", RESUME_WITH_DATES)
+    [years] = a.years
+    verdict = years.verdict(a.resume_years)
+    assert "cannot say how much of that was Python" in verdict
+    assert "yours to judge" in verdict
+
+
+def test_a_resume_with_no_dates_answers_nothing():
+    a = m.analyze("Requirements\n5+ years of experience.", "I am good at computers.")
+    assert a.resume_years is None
+    assert a.resume_spans == ()
+    assert a.years[0].verdict(a.resume_years) is None
+
+
+def test_the_spans_are_reported_so_the_arithmetic_can_be_checked():
+    a = m.analyze("Requirements\nPython.", RESUME_WITH_DATES)
+    assert "Jun 2020 to Jul 2020" in a.resume_spans
+    assert any("Jul 2021 to Nov 2024" in s and "Dec 2024 to Aug 2025" in s for s in a.resume_spans)
+
+
+def test_a_truncated_resume_does_not_get_a_years_verdict():
+    resume = RESUME_WITH_DATES + "\n" + ("filler " * 4000)
+    a = m.analyze("Requirements\nA minimum of 6 years of experience.", resume)
+    assert a.resume_unread > 0
+    assert a.resume_years == 4.3  # still reported
+    assert a.years_partial
+    assert a.years_to_compare is None  # but not used to answer anything
+    assert a.years[0].verdict(a.years_to_compare) is None
+    assert any("is a floor, not a total" in n for n in a.notes)
+
+
+def test_a_whole_resume_is_compared_normally():
+    a = m.analyze("Requirements\nA minimum of 6 years of experience.", RESUME_WITH_DATES)
+    assert not a.years_partial
+    assert a.years_to_compare == 4.3
+    assert not any("is a floor" in n for n in a.notes)
+
+
+def test_no_floor_note_when_the_post_asks_for_no_years():
+    resume = RESUME_WITH_DATES + "\n" + ("filler " * 4000)
+    a = m.analyze("Requirements\nPython, Docker and AWS.", resume)
+    assert a.years_partial
+    assert not any("is a floor" in n for n in a.notes)
+
+
+JOB_WITH_SKILLS = "Requirements\nPython, Docker and AWS."
+
+
+def test_a_claim_the_dates_do_not_support_is_pointed_out():
+    resume = "IT engineer with 8+ years of experience.\nEngineer  Jul 2021 to Nov 2024"
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    note = next(n for n in a.notes if "add up to" in n)
+    assert "says 8+ years" in note
+    assert "add up to 3.4" in note
+
+
+def test_a_claim_the_dates_support_is_left_alone():
+    resume = "IT engineer with 4+ years.\nEngineer  Jul 2021 to Nov 2024\nSenior  Dec 2024 to Aug 2025"
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_a_small_gap_is_not_worth_mentioning():
+    # 41 months is 3.4 years. A resume saying "4+ years" is rounding, not overclaiming.
+    resume = "4+ years of experience.\nEngineer  Jul 2021 to Nov 2024"
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_no_claim_means_nothing_to_check():
+    a = m.analyze(JOB_WITH_SKILLS, "Engineer  Jul 2021 to Nov 2024")
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_no_dates_means_nothing_to_check_against():
+    a = m.analyze(JOB_WITH_SKILLS, "IT engineer with 8+ years of experience.")
+    assert a.resume_years is None
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_a_truncated_resume_is_not_accused_of_overclaiming():
+    # The total is a floor, so the gap is not evidence of anything.
+    resume = "8+ years of experience.\nEngineer  Jul 2021 to Nov 2024\n" + ("filler " * 4000)
+    a = m.analyze(JOB_WITH_SKILLS, resume)
+    assert a.years_partial
+    assert not any("add up to" in n for n in a.notes)
+
+
+def test_the_largest_claim_in_the_resume_is_the_one_checked():
+    assert m.claimed_years("2 years here. 8+ years of experience. 3 years there.") == 8
+    assert m.claimed_years("No numbers at all.") is None
