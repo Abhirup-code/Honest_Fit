@@ -346,3 +346,28 @@ def test_the_spans_are_reported_so_the_arithmetic_can_be_checked():
     a = m.analyze("Requirements\nPython.", RESUME_WITH_DATES)
     assert "Jun 2020 to Jul 2020" in a.resume_spans
     assert any("Jul 2021 to Nov 2024" in s and "Dec 2024 to Aug 2025" in s for s in a.resume_spans)
+
+
+def test_a_truncated_resume_does_not_get_a_years_verdict():
+    resume = RESUME_WITH_DATES + "\n" + ("filler " * 4000)
+    a = m.analyze("Requirements\nA minimum of 6 years of experience.", resume)
+    assert a.resume_unread > 0
+    assert a.resume_years == 4.3  # still reported
+    assert a.years_partial
+    assert a.years_to_compare is None  # but not used to answer anything
+    assert a.years[0].verdict(a.years_to_compare) is None
+    assert any("is a floor, not a total" in n for n in a.notes)
+
+
+def test_a_whole_resume_is_compared_normally():
+    a = m.analyze("Requirements\nA minimum of 6 years of experience.", RESUME_WITH_DATES)
+    assert not a.years_partial
+    assert a.years_to_compare == 4.3
+    assert not any("is a floor" in n for n in a.notes)
+
+
+def test_no_floor_note_when_the_post_asks_for_no_years():
+    resume = RESUME_WITH_DATES + "\n" + ("filler " * 4000)
+    a = m.analyze("Requirements\nPython, Docker and AWS.", resume)
+    assert a.years_partial
+    assert not any("is a floor" in n for n in a.notes)

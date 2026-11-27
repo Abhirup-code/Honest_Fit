@@ -253,6 +253,21 @@ class Analysis:
     resume_spans: tuple[str, ...] = ()
 
     @property
+    def years_partial(self) -> bool:
+        """True when dates may exist past the point the resume was cut off."""
+        return bool(self.resume_unread) and self.resume_years is not None
+
+    @property
+    def years_to_compare(self) -> float | None:
+        """The total a requirement may be judged against, or None when it cannot be trusted.
+
+        A truncated resume gives a total that is a floor rather than a sum, and comparing a floor
+        against "5+ years" produces a confident "1.7 short of this" that may be false. The total
+        is still reported; it is just not used to answer anything.
+        """
+        return None if self.years_partial else self.resume_years
+
+    @property
     def skills_compared(self) -> int:
         """How many of the post's skills the score is actually based on."""
         return len(self.matched) + len(self.missing)
@@ -350,6 +365,11 @@ def analyze(job: str, resume: str) -> Analysis:
         history.total_years(spans) if spans else None,
         tuple(span.text for span in history.merge(spans)),
     )
+    if result.years_partial and result.years:
+        notes.append(
+            f"The {result.resume_years} years counted from your resume is a floor, not a total, because "
+            "the end of it was not read. The years requirements below are left for you to judge."
+        )
     if result.thin:
         count = result.skills_compared
         one = count == 1

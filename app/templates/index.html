@@ -73,13 +73,13 @@
     <section aria-labelledby="years-heading" class="years">
       <h3 id="years-heading">Years of experience asked for ({{ a.years | length }})</h3>
       <p class="muted small">Not part of the score.{% if a.resume_years %}
-        Your resume's own dates add up to {{ a.resume_years }} years of work.{% else %}
+        Your resume's own dates add up to {{ a.resume_years }} years of work{% if a.years_partial %}, so far: the end of it was not read{% endif %}.{% else %}
         Check each against your own history before you apply.{% endif %}</p>
       <ul class="skills">
         {% for y in a.years %}
         <li>
           <strong>{{ y.label() }}</strong> <span class="tag {{ 'tag-required' if y.required }}">{{ "required" if y.required else "nice to have" }}</span>
-          {% if y.verdict(a.resume_years) %}<p class="muted small">{{ y.verdict(a.resume_years) }}</p>{% endif %}
+          {% if y.verdict(a.years_to_compare) %}<p class="muted small">{{ y.verdict(a.years_to_compare) }}</p>{% endif %}
           <p class="evidence">“{{ y.sentence }}”</p>
         </li>
         {% endfor %}

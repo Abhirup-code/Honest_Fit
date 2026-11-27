@@ -65,6 +65,8 @@ def report_json(report: Report) -> dict:
         # What the resume's own date ranges add up to, and the stretches they came from.
         "resume_years": a.resume_years,
         "resume_spans": list(a.resume_spans),
+        # True when dates may lie past the point the resume was cut off, so the total is a floor.
+        "resume_years_partial": a.years_partial,
         "matched": [{"skill": m.skill, "required": m.required, "evidence": m.evidence} for m in a.matched],
         "missing": [{"skill": m.skill, "required": m.required, "related": m.related} for m in a.missing],
         "notes": a.notes,
