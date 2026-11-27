@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from . import history
 from .skills import find_skills, mentions, related
 
 MAX_TEXT = 20_000
@@ -124,6 +125,26 @@ class YearsRequirement:
         what = f" of {self.skill}" if self.skill else " of experience"
         return f"{self.years}+ years{what}"
 
+    def verdict(self, resume_years: float | None) -> str | None:
+        """What the resume's own dates say about this line, or None when they cannot say.
+
+        Only a requirement with no skill named can be answered this way. A resume's dates say how
+        long someone has worked, not how much of that was spent on Kubernetes, and quietly
+        treating the two as the same is exactly the kind of flattering guess this tool exists to
+        avoid.
+        """
+        if resume_years is None:
+            return None
+        if self.skill:
+            return (
+                f"Your resume shows {resume_years} years of work in total. It cannot say how much "
+                f"of that was {self.skill}, so this one is still yours to judge."
+            )
+        if resume_years >= self.years:
+            return f"Your resume shows {resume_years} years, which clears this."
+        short = round(self.years - resume_years, 1)
+        return f"Your resume shows {resume_years} years, which is {short} short of this."
+
 
 @dataclass
 class Requirements:
@@ -227,6 +248,9 @@ class Analysis:
     # Characters of each input that were past MAX_TEXT and never read.
     job_unread: int = 0
     resume_unread: int = 0
+    # Years of work the resume's own date ranges add up to, or None when none could be read.
+    resume_years: float | None = None
+    resume_spans: tuple[str, ...] = ()
 
     @property
     def skills_compared(self) -> int:
@@ -298,8 +322,8 @@ def analyze(job: str, resume: str) -> Analysis:
         )
     if reqs.years:
         notes.append(
-            "This post asks for years of experience. Only you can judge those, "
-            "so they are listed separately and are not part of the score."
+            "This post asks for years of experience. They are listed separately and are not part "
+            "of the score, because a skill match says nothing about them."
         )
     if job_unread:
         notes.append(
@@ -312,6 +336,7 @@ def analyze(job: str, resume: str) -> Analysis:
             f"Only the first {MAX_TEXT:,} characters of your resume were read, and {resume_unread:,} were not. "
             "Skills further down may be missing from the match."
         )
+    spans = history.read_spans(resume)
     result = Analysis(
         fit_score(matched, missing),
         matched,
@@ -322,6 +347,8 @@ def analyze(job: str, resume: str) -> Analysis:
         reqs.gates,
         job_unread,
         resume_unread,
+        history.total_years(spans) if spans else None,
+        tuple(span.text for span in history.merge(spans)),
     )
     if result.thin:
         count = result.skills_compared

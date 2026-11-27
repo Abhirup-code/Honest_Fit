@@ -300,3 +300,49 @@ def test_an_entry_level_post_gets_no_years_note():
     analysis = m.analyze(job, "Python and Docker.")
     assert analysis.years == []
     assert not any("years of experience" in note for note in analysis.notes)
+
+
+RESUME_WITH_DATES = """
+Senior Engineer      Dec 2024 to Aug 2025
+Engineer             Jul 2021 to Nov 2024
+Intern               Jun 2020 to Jul 2020
+"""
+
+
+def test_the_resume_dates_are_added_up():
+    a = m.analyze("Requirements\nPython, Docker and AWS.", RESUME_WITH_DATES)
+    assert a.resume_years == 4.3  # 52 months of calendar, not 2 + 41 + 9
+    assert len(a.resume_spans) == 2  # the two senior roles run straight on
+
+
+def test_a_plain_years_requirement_is_answered():
+    a = m.analyze("Requirements\nA minimum of 3 years of experience.", RESUME_WITH_DATES)
+    [years] = a.years
+    assert years.verdict(a.resume_years) == "Your resume shows 4.3 years, which clears this."
+
+
+def test_a_years_requirement_the_resume_falls_short_of_says_by_how_much():
+    a = m.analyze("Requirements\nA minimum of 6 years of experience.", RESUME_WITH_DATES)
+    [years] = a.years
+    assert years.verdict(a.resume_years) == "Your resume shows 4.3 years, which is 1.7 short of this."
+
+
+def test_a_skill_specific_requirement_is_not_answered_by_total_experience():
+    a = m.analyze("Requirements\n3+ years of Python experience.", RESUME_WITH_DATES)
+    [years] = a.years
+    verdict = years.verdict(a.resume_years)
+    assert "cannot say how much of that was Python" in verdict
+    assert "yours to judge" in verdict
+
+
+def test_a_resume_with_no_dates_answers_nothing():
+    a = m.analyze("Requirements\n5+ years of experience.", "I am good at computers.")
+    assert a.resume_years is None
+    assert a.resume_spans == ()
+    assert a.years[0].verdict(a.resume_years) is None
+
+
+def test_the_spans_are_reported_so_the_arithmetic_can_be_checked():
+    a = m.analyze("Requirements\nPython.", RESUME_WITH_DATES)
+    assert "Jun 2020 to Jul 2020" in a.resume_spans
+    assert any("Jul 2021 to Nov 2024" in s and "Dec 2024 to Aug 2025" in s for s in a.resume_spans)

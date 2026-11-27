@@ -62,6 +62,9 @@ def report_json(report: Report) -> dict:
         # Characters past the limit that were never read, so a caller knows the answer is partial.
         "job_unread": a.job_unread,
         "resume_unread": a.resume_unread,
+        # What the resume's own date ranges add up to, and the stretches they came from.
+        "resume_years": a.resume_years,
+        "resume_spans": list(a.resume_spans),
         "matched": [{"skill": m.skill, "required": m.required, "evidence": m.evidence} for m in a.matched],
         "missing": [{"skill": m.skill, "required": m.required, "related": m.related} for m in a.missing],
         "notes": a.notes,
