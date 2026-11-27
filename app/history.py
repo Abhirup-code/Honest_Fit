@@ -66,15 +66,23 @@ def _next_month(year: int, month: int) -> dt.date:
 
 
 def read_spans(text: str, today: dt.date | None = None) -> list[Span]:
-    """Every date range in the text, oldest first. Ranges that run backwards are left out."""
+    """Every date range in the text, oldest first.
+
+    Nothing in the future counts as experience. A range starting after this month is dropped
+    outright, and one that merely ends later is clipped to this month: a job someone is still
+    doing has been done up to now and no further, whatever end date they typed.
+    """
     now = today or dt.date.today()
+    this_month = _next_month(now.year, now.month)
     found = []
     for match in _RANGE.finditer(text):
         start = dt.date(int(match["from_year"]), _month(match["from_month"]), 1)
+        if start >= this_month:
+            continue  # work that has not happened yet is not experience
         if match["now"]:
-            end = _next_month(now.year, now.month)
+            end = this_month
         else:
-            end = _next_month(int(match["to_year"]), _month(match["to_month"]))
+            end = min(_next_month(int(match["to_year"]), _month(match["to_month"])), this_month)
         if end <= start:
             continue  # "Nov 2024 to Jul 2021" is a typo, not a negative job
         found.append(Span(start, end, " ".join(match.group(0).split())))

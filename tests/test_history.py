@@ -145,3 +145,31 @@ def test_a_real_resume_adds_up():
     # 2 + 50 (the two Wipro roles run straight on) + 3, not 2 + 41 + 9 + 3 counted blindly.
     assert total_months(found) == 55
     assert total_years(found) == 4.6
+
+
+def test_a_job_that_has_not_started_is_not_experience():
+    assert spans("Incoming Engineer   Jan 2030 to Dec 2032") == []
+
+
+def test_a_job_running_past_this_month_is_counted_only_up_to_now():
+    # Someone with a contract written through 2027 has not done 2027 yet.
+    [span] = spans("Engineer   Jan 2026 to Dec 2027")
+    assert span.end == dt.date(2026, 12, 1)
+    assert span.months == 11
+
+
+def test_an_open_range_and_a_future_end_agree():
+    [open_ended] = spans("Jan 2026 to Present")
+    [future_end] = spans("Jan 2026 to Dec 2027")
+    assert open_ended.months == future_end.months
+
+
+def test_a_job_that_ends_this_month_is_kept_whole():
+    [span] = spans("Jan 2026 to Nov 2026")
+    assert span.end == dt.date(2026, 12, 1)
+    assert span.months == 11
+
+
+def test_a_future_job_does_not_inflate_the_total():
+    resume = "Engineer  Jul 2021 to Nov 2024\nStarting soon  Jan 2030 to Dec 2032"
+    assert total_months(spans(resume)) == 41
