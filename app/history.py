@@ -79,3 +79,32 @@ def read_spans(text: str, today: dt.date | None = None) -> list[Span]:
             continue  # "Nov 2024 to Jul 2021" is a typo, not a negative job
         found.append(Span(start, end, " ".join(match.group(0).split())))
     return sorted(found, key=lambda s: (s.start, s.end))
+
+
+def merge(spans: list[Span]) -> list[Span]:
+    """Overlapping and touching spans combined, so time is counted once.
+
+    Two jobs at once, or a contract that ran alongside a staff role, are two spans covering the
+    same months. Adding their lengths would claim more experience than the calendar allows. Spans
+    that merely touch are joined too: Jul 2021 to Nov 2024 followed by Dec 2024 is one unbroken
+    stretch, and reporting it as two invites an off-by-one at the join.
+    """
+    merged: list[Span] = []
+    for span in sorted(spans, key=lambda s: (s.start, s.end)):
+        if merged and span.start <= merged[-1].end:
+            last = merged[-1]
+            if span.end > last.end:
+                merged[-1] = Span(last.start, span.end, f"{last.text}, {span.text}")
+        else:
+            merged.append(span)
+    return merged
+
+
+def total_months(spans: list[Span]) -> int:
+    """Months covered by these spans, counting any month once however many jobs filled it."""
+    return sum(span.months for span in merge(spans))
+
+
+def total_years(spans: list[Span]) -> float:
+    """Months as years, to one decimal. 41 months is 3.4 years, not "about three"."""
+    return round(total_months(spans) / 12, 1)
