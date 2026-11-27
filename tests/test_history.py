@@ -173,3 +173,38 @@ def test_a_job_that_ends_this_month_is_kept_whole():
 def test_a_future_job_does_not_inflate_the_total():
     resume = "Engineer  Jul 2021 to Nov 2024\nStarting soon  Jan 2030 to Dec 2032"
     assert total_months(spans(resume)) == 41
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["07/2021 - 11/2024", "7/2021 to 11/2024", "07/15/2021 – 11/30/2024", "07/2021—11/2024"],
+)
+def test_dates_written_as_numbers_are_read(text):
+    [span] = spans(text)
+    assert (span.start, span.end) == (dt.date(2021, 7, 1), dt.date(2024, 12, 1))
+
+
+def test_a_numeric_range_can_be_open_ended():
+    [span] = spans("01/2026 to Present")
+    assert span.end == dt.date(2026, 12, 1)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Windows 7/10/365",
+        "26/2021 - 11/2024",  # there is no month 26
+        "scores 5/10 to 8/10",
+        "version 1/2024/3",
+        "call 773/670/8852",
+        "ratio 3/4 to 5/6",
+    ],
+)
+def test_numbers_that_are_not_dates(text):
+    assert spans(text) == []
+
+
+def test_both_date_styles_in_one_resume_are_counted_once_each():
+    resume = "Engineer   07/2021 - 11/2024\nIntern   Jun 2020 to Jul 2020"
+    assert [s.months for s in spans(resume)] == [2, 41]
+    assert total_months(spans(resume)) == 43

@@ -34,6 +34,15 @@ _YEAR = r"(?:19|20)\d{2}"
 _DASH = r"[ \t]*(?:-|–|—|to|through|until)[ \t]*"
 _NOW = r"(?:present|current|now|to date|ongoing)"
 
+# "07/2021", "7/2021", "07/15/2021". A day in the middle is ignored: resumes are counted by
+# month, and a range is no more precise than the month it starts in.
+_SLASHED = r"(?P<{0}_m>0?[1-9]|1[0-2])/(?:\d{{1,2}}/)?(?P<{0}_y>(?:19|20)\d{{2}})"
+
+_SLASHED_RANGE = re.compile(
+    rf"(?<![\d/]){_SLASHED.format('from')}{_DASH}(?:{_SLASHED.format('to')}|(?P<now>{_NOW}))(?![\d/])",
+    re.I,
+)
+
 _RANGE = re.compile(
     rf"(?P<from_month>{_MONTH})[ \t]+(?P<from_year>{_YEAR})"
     rf"{_DASH}"
@@ -86,6 +95,17 @@ def read_spans(text: str, today: dt.date | None = None) -> list[Span]:
         if end <= start:
             continue  # "Nov 2024 to Jul 2021" is a typo, not a negative job
         found.append(Span(start, end, " ".join(match.group(0).split())))
+
+    for match in _SLASHED_RANGE.finditer(text):
+        start = dt.date(int(match["from_y"]), int(match["from_m"]), 1)
+        if start >= this_month:
+            continue
+        end = this_month if match["now"] else _next_month(int(match["to_y"]), int(match["to_m"]))
+        end = min(end, this_month)
+        if end <= start:
+            continue
+        found.append(Span(start, end, " ".join(match.group(0).split())))
+
     return sorted(found, key=lambda s: (s.start, s.end))
 
 
